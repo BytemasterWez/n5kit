@@ -167,10 +167,5 @@
     "old": "host.book(token, seconds + cleanup_cap + 90)",
     "new": "host.book(token, seconds + 90)"
   },
-  {
-    "name": "cleanup_evidence_binding",
-    "file": "n5kit/run.py",
-    "old": "'sha256': hashlib.sha256(path.read_bytes()).hexdigest()",
-    "new": "'sha256': 'wrong'"
-  }
+  {"name": "cleanup_evidence_binding", "file": "n5kit/run.py", "old": "'sha256': hashlib.sha256(path.read_bytes()).hexdigest()", "new": "'sha256': 'wrong'"}
 ]
