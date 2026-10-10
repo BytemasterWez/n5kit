@@ -57,6 +57,9 @@ def execute(case, image, root):
             wait_for(lambda: bool(list((root/'runs').glob('*/samples.jsonl'))))
             out = next((root/'runs').glob('*/samples.jsonl')).parent
             token = out.name
+            wait_for(lambda: (out/'output/root.txt').exists())
+            require((out/'output/root.txt').stat().st_uid == 0, 'fixture_not_root_written')
+            receipt['initial_output_uid'] = 0
             if case in ('term', 'kill'):
                 if case == 'kill':
                     os.killpg(process.pid, signal.SIGKILL)

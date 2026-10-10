@@ -66,11 +66,16 @@ def sample(cid, token):
     require(not state['OOMKilled'], 'container_oom')
     result = {'running': state['Running'], 'exit': state['ExitCode']}
     if state['Running']:
-        relative = Path(f"/proc/{state['Pid']}/cgroup").read_text().strip().split('::')[1].lstrip('/')
-        root = Path('/sys/fs/cgroup') / relative
-        events = dict(line.split() for line in (root / 'memory.events').read_text().splitlines())
-        require(int(events['oom']) == 0 and int(events['oom_kill']) == 0, 'container_oom_events')
-        result.update(peak=int((root / 'memory.peak').read_text()), pids=int((root / 'pids.peak').read_text()))
+        try:
+            relative = Path(f"/proc/{state['Pid']}/cgroup").read_text().strip().split('::')[1].lstrip('/')
+            root = Path('/sys/fs/cgroup') / relative
+            events = dict(line.split() for line in (root / 'memory.events').read_text().splitlines())
+            require(int(events['oom']) == 0 and int(events['oom_kill']) == 0, 'container_oom_events')
+            result.update(peak=int((root / 'memory.peak').read_text()), pids=int((root / 'pids.peak').read_text()))
+        except OSError:
+            terminal = inspect('container', cid, token)['State']
+            require(not terminal['Running'] and not terminal['OOMKilled'], 'unreadable_live_cgroup')
+            result = {'running': False, 'exit': terminal['ExitCode']}
     return result
 
 

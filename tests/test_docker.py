@@ -26,9 +26,9 @@ class DockerTests(unittest.TestCase):
     def test_oom_and_missing_counter_refused(self):
         from pathlib import Path
         item = {'State': {'Running': True, 'OOMKilled': False, 'Pid': 123, 'ExitCode': 0}}
-        for events in ('oom 1\noom_kill 0', 'oom_kill 0'):
+        for events in ('oom 1\noom_kill 0', 'oom 0\noom_kill 1', 'oom_kill 0'):
             def read(path):
-                return '0::/fake' if str(path).startswith('/proc/') else events
+                return '0::/fake' if str(path).startswith('/proc/') else {'memory.events':events,'memory.peak':'1000000','pids.peak':'3'}[path.name]
             with patch.object(docker, 'inspect', return_value=item), patch.object(Path, 'read_text', read):
                 with self.assertRaises((RuntimeError, KeyError)): docker.sample('id', TOKEN)
         item['State']['OOMKilled'] = True

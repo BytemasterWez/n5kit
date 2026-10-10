@@ -2,6 +2,7 @@
 import datetime as dt
 import fcntl
 import os
+import re
 from pathlib import Path
 import subprocess
 from . import require, token_ok
@@ -38,8 +39,30 @@ def window(now, seconds):
 
 
 def inventory():
-    return {kind: subprocess.check_output(['systemctl', *args, 'list-timers', '--all', '--no-pager'], timeout=10).decode()
-            for kind, args in [('system', []), ('user', ['--user'])]}
+    result = {}
+    env = dict(os.environ, TZ='UTC', LC_ALL='C')
+    for kind, args in [('system', []), ('user', ['--user'])]:
+        raw = subprocess.check_output(['systemctl', *args, 'list-timers', '--all', '--no-legend', '--no-pager'], env=env, timeout=10).decode()
+        active = {}
+        for row in raw.splitlines():
+            fields = row.split()
+            if any(word in ' '.join(fields[-2:]) for word in ('snapper-', 'backup', 'restore-verify')):
+                active[fields[-1]] = subprocess.check_output(['systemctl', *args, 'show', fields[-1], '--property=ActiveState', '--value'], timeout=5).decode().strip()
+        result[kind] = {'timers': raw, 'active': active}
+    return result
+
+
+def scheduled(timers, now, seconds):
+    require(set(timers) == {'system', 'user'}, 'incomplete_timer_inventory')
+    for scope in timers.values():
+        require(all(state in ('inactive', 'failed') for state in scope['active'].values()), 'conflicting_job_active')
+        for row in scope['timers'].splitlines():
+            fields = row.split()
+            if not any(word in ' '.join(fields[-2:]) for word in ('snapper-', 'backup', 'restore-verify')):
+                continue
+            require(len(fields) >= 6 and fields[3] == 'UTC' and re.fullmatch(r'\d{4}-\d{2}-\d{2}', fields[1]), 'unknown_timer_deadline')
+            due = dt.datetime.fromisoformat(fields[1] + 'T' + fields[2] + '+00:00')
+            require(due > now + dt.timedelta(seconds=seconds), 'conflicting_timer_due')
 
 
 def reservation(token, seconds, path=RESERVATIONS):

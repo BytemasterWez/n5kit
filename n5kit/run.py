@@ -20,6 +20,7 @@ def submit(spec, root, token=None):
     host.window(dt.datetime.now().astimezone(), seconds + 90)
     host.probe(spec.get('floors'))
     timers = host.inventory()
+    host.scheduled(timers, dt.datetime.now().astimezone(), seconds + 90)
     root = Path(root).resolve()
     require(re.fullmatch(r'[/A-Za-z0-9_.-]+', str(root)) is not None, 'unsafe_unit_path')
     root.mkdir(parents=True, exist_ok=True)

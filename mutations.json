@@ -70,5 +70,35 @@
     "file": "n5kit/run.py",
     "old": "host.release(spec['token'])",
     "new": "pass"
+  },
+  {
+    "name": "timer_due",
+    "file": "n5kit/host.py",
+    "old": "due > now +",
+    "new": "due >= now +"
+  },
+  {
+    "name": "timer_active",
+    "file": "n5kit/host.py",
+    "old": "state in ('inactive', 'failed')",
+    "new": "True"
+  },
+  {
+    "name": "floor_weaken",
+    "file": "n5kit/host.py",
+    "old": "limits[k] >= v",
+    "new": "True"
+  },
+  {
+    "name": "oom_events",
+    "file": "n5kit/docker.py",
+    "old": "int(events['oom']) == 0 and int(events['oom_kill']) == 0",
+    "new": "True"
+  },
+  {
+    "name": "container_pids",
+    "file": "n5kit/docker.py",
+    "old": "pids=64, role",
+    "new": "pids=65, role"
   }
 ]

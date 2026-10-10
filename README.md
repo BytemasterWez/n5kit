@@ -2,7 +2,7 @@
 
 Small shared run guards for Wesley's N5. This is a local candidate for #0228, not yet qualified or adopted by County, FedSpend or FirstPass.
 
-Use Python3.11+, Docker CLI and a user systemd manager. `make check` runs preflight, Ruff, tests from a clean Git archive, guard mutations and a secret scan. Commit before checking; working-tree changes are refused. `make export` produces a clean source archive and SHA256 inventory in a fresh temporary directory. No install, publication or remote CI execution is implicit.
+Use Python3.11+, Docker CLI and a user systemd manager. Job images must run as root and provide a chown executable for owned output repair; other images fail closed. `make check` runs preflight, Ruff, tests from a clean Git archive, guard mutations and a secret scan. Commit before checking; working-tree changes are refused. `make export` produces a clean source archive and SHA256 inventory in a fresh temporary directory. No install, publication or remote CI execution is implicit.
 
 `make run SPEC=/absolute/job.json OUT=/absolute/evidence` runs a transient SERVICE. JSON requires an immutable local image ID and an argv array. Defaults:60seconds, container512MiB/64PIDs/1CPU; worker256MiB/64tasks; cleanup90seconds. Set `seconds` explicitly for a task, at most1800. Host floors are memory>16GiB, Docker disk>256GiB, Work disk>100GiB, load<2×cores. Explicit `floors` may tighten these minimums; they cannot drop another guard or weaken a floor. Resource caps on Docker are separate from systemd limits on the worker. The run must fit entirely before:52, including90seconds for cleanup, and start at:05 or later.
 
@@ -13,3 +13,5 @@ Each run owns a private evidence directory, a fresh token label, an internal net
 The API is trusted local tooling, not a sandbox for hostile same-UID callers or arbitrary untrusted images. Docker access is powerful. Supply only approved synthetic/public workloads; argv/config are recorded privately and must not contain credentials. Do not run Python with optimization flags that bypass project assertions (n5kit's own guards use explicit exceptions). Rehearsal injection must not appear in a normal trial's spec.
 
 Project scaffolding is in `templates/project/`. The shared canonical copy is `/home/wez/Work/templates/project/`; configure a pinned library repository/revision for portable CI before enabling that workflow. FirstPass's receipted tooling is unchanged.
+
+Admission also refuses active snapshot/backup/restore services or any such timer due before runtime+cleanup finishes. Timer records use LC_ALL=C/TZ=UTC; unknown deadlines refuse. Self-checks import only the extracted archive, not the working repository. This repository stays local; a GitHub publication needs Wesley's separate yes. Template action SHAs reuse the already pinned County workflow revisions.

@@ -17,7 +17,7 @@ class RunTests(unittest.TestCase):
                     self.assertTrue(any('ExecStopPost=' in v for v in args))
                     (Path(temp)/token/'END.json').write_text('{"ok":true}')
                 return type('Result', (), {'returncode':0})()
-            with patch.object(run.host, 'window'), patch.object(run.host, 'probe'), patch.object(run.host, 'inventory', return_value={}), patch.object(run.host, 'book') as book, patch.object(run.subprocess, 'run', side_effect=execute):
+            with patch.object(run.host, 'window'), patch.object(run.host, 'probe'), patch.object(run.host, 'inventory', return_value={}), patch.object(run.host, 'scheduled'), patch.object(run.host, 'book') as book, patch.object(run.subprocess, 'run', side_effect=execute):
                 out = run.submit({'seconds':60}, temp, token)
             self.assertTrue((out/'START.json').exists())
             book.assert_called_once_with(token,150)
