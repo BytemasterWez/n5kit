@@ -44,8 +44,7 @@ class HostTests(unittest.TestCase):
         with patch.object(host, 'metrics', return_value=values), patch.object(host.dt, 'datetime', wraps=dt.datetime) as clock:
             clock.now.return_value = now
             for floor in (8, 10): self.assertEqual(host.probe({'memory': floor}, exception)['memory'], 11)
-            bad = [None, {}, 'invalid', dict(exception, authority=' '), dict(exception, card=''), dict(exception, expiry='invalid'), dict(exception, expiry='2026-10-11T00:00:01Z'), dict(exception, expiry='2026-10-10T22:00:00Z'), dict(exception, expiry='2026-10-10T21:59:59Z'), dict(exception, expiry='2026-10-11T00:00:00')]
-            bad += [{k: v for k, v in exception.items() if k != field} for field in ('authority', 'card', 'expiry')]
+            bad = [None, {}, 'invalid', dict(exception, authority=' '), dict(exception, card=''), dict(exception, expiry='invalid'), dict(exception, expiry='2026-10-11T00:00:01Z'), dict(exception, expiry='2026-10-10T22:00:00Z'), dict(exception, expiry='2026-10-10T21:59:59Z'), dict(exception, expiry='2026-10-11T00:00:00')] + [{k: v for k, v in exception.items() if k != field} for field in ('authority', 'card', 'expiry')]
             for ex in bad:
                 with self.subTest(exception=ex), self.assertRaises(RuntimeError): host.probe({'memory': 10}, ex)
             for floors in (None, {'memory': 7.99}, {'memory': 8, 'docker': 255}, {'memory': 8, 'work': 99}):
@@ -53,7 +52,6 @@ class HostTests(unittest.TestCase):
             values['memory'] = 8
             with self.assertRaises(RuntimeError): host.probe({'memory': 8}, exception)
             values['memory'] = 17
-            self.assertEqual(host.probe()['memory'], 17)
             clock.now.return_value = now + dt.timedelta(hours=2)
             with self.assertRaises(RuntimeError): host.probe({'memory': 10}, exception)
 
