@@ -1,5 +1,6 @@
 """Transient SERVICE owns the worker; ExecStopPost owns cleanup even after SIGKILL."""
 import datetime as dt
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -125,6 +126,7 @@ def worker(config):
 def cleanup(config):
     spec = json.loads(config.read_text())
     out = config.parent
+    detail = None
     try:
         removed = [] if spec.get('mode') == 'native' else docker.cleanup(spec['token'], spec['image'], out / 'output', spec['uid'], spec['gid'])
         if 'cleanup_argv' in spec:
@@ -134,15 +136,19 @@ def cleanup(config):
                                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
             finally:
                 evidence.receipt(out / 'cleanup-command.json', {'returncode': status})
+                path = out / 'cleanup-result.json'
+                require(not path.is_symlink(), 'cleanup_evidence_symlink')
+                if path.exists():
+                    detail = {'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
             require(status == 0, 'cleanup_command_failed')
         host.release(spec['token'])
         job = json.loads((out / 'job.json').read_text()) if (out / 'job.json').exists() else {}
         ok = os.environ.get('SERVICE_RESULT', 'failed') == 'success' and (out / 'job.json').exists()
         evidence.receipt(out / 'END.json', {'at': dt.datetime.now().astimezone().isoformat(), 'ok': ok,
-                                          'service_result': os.environ.get('SERVICE_RESULT', 'failed'), 'removed': removed, 'orphans_killed': job.get('orphans_killed'), **scope(spec)})
+                                          'service_result': os.environ.get('SERVICE_RESULT', 'failed'), 'removed': removed, 'cleanup_evidence': detail, 'orphans_killed': job.get('orphans_killed'), **scope(spec)})
     except Exception:
         evidence.receipt(out / 'cleanup-failed.json', {'ok': False})
-        evidence.receipt(out / 'END.json', {'at': dt.datetime.now().astimezone().isoformat(), 'ok': False, 'cleanup_failed': True})
+        evidence.receipt(out / 'END.json', {'at': dt.datetime.now().astimezone().isoformat(), 'ok': False, 'cleanup_failed': True, 'cleanup_evidence': detail})
         raise
 
 

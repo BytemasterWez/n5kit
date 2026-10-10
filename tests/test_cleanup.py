@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -52,6 +53,7 @@ class CleanupTests(unittest.TestCase):
                 order = []
                 def execute(args, **kw):
                     order.append('callback')
+                    (root/'cleanup-result.json').write_text('{"destroy_absent":true}')
                     self.assertEqual(args, argv)
                     self.assertFalse(kw['shell'])
                     self.assertEqual(kw['timeout'], cap)
@@ -70,4 +72,18 @@ class CleanupTests(unittest.TestCase):
                 self.assertEqual(order, ['callback', 'release'] if outcome == 0 else ['callback'])
                 receipt = json.loads((root / 'cleanup-command.json').read_text())
                 self.assertEqual(receipt, {'returncode': outcome if isinstance(outcome, int) else None})
-                self.assertEqual(json.loads((root / 'END.json').read_text())['ok'], outcome == 0 and service == 'success')
+                end = json.loads((root / 'END.json').read_text())
+                self.assertEqual(end['ok'], outcome == 0 and service == 'success')
+                self.assertEqual(end['cleanup_evidence'], {'file': 'cleanup-result.json', 'sha256': hashlib.sha256(b'{"destroy_absent":true}').hexdigest()})
+
+    def test_cleanup_receipt_symlink_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = root/'config.json'
+            config.write_text(json.dumps(dict(mode='native', token='a'*32, cleanup_argv=['true'])))
+            (root/'cleanup-result.json').symlink_to(root/'missing')
+            with patch.object(run.subprocess, 'run', return_value=Mock(returncode=0)), patch.object(run.host, 'release') as release:
+                with self.assertRaisesRegex(RuntimeError, 'cleanup_evidence_symlink'):
+                    run.cleanup(config)
+                release.assert_not_called()
+            self.assertFalse(json.loads((root/'END.json').read_text())['ok'])
