@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from n5kit import docker
@@ -24,7 +25,6 @@ class DockerTests(unittest.TestCase):
         self.assertIn('n5kit.token='+TOKEN, args)
 
     def test_oom_and_missing_counter_refused(self):
-        from pathlib import Path
         item = {'State': {'Running': True, 'OOMKilled': False, 'Pid': 123, 'ExitCode': 0}}
         for events in ('oom 1\noom_kill 0', 'oom 0\noom_kill 1', 'oom_kill 0'):
             def read(path):
@@ -40,7 +40,7 @@ class DockerTests(unittest.TestCase):
         def call(*args, **kw):
             if args[1] == 'rm': resources[args[0]].remove(args[-1])
             return ''
-        with patch.object(docker, 'owned', side_effect=lambda k,t: list(resources[k])), patch.object(docker, 'call', side_effect=call), patch.object(docker, 'container', side_effect=RuntimeError('chown')):
+        with patch.object(Path, 'iterdir', return_value=iter([Path('root.txt')])), patch.object(docker, 'owned', side_effect=lambda k,t: list(resources[k])), patch.object(docker, 'call', side_effect=call), patch.object(docker, 'container', side_effect=RuntimeError('chown')):
             with self.assertRaises(RuntimeError): docker.cleanup(TOKEN, IMAGE, '/owned/output')
         self.assertEqual(resources, {'container': [], 'network': [], 'volume': []})
 

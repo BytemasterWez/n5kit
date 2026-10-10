@@ -39,6 +39,7 @@ def submit(spec, root, token=None):
     args = ['systemd-run', '--user', '--no-ask-password', '--wait', '--collect', '--quiet', f'--unit={unit}',
             f'--working-directory={Path(__file__).resolve().parent.parent}']
     args += [f'--property={value}' for value in properties]
+    host.window(dt.datetime.now().astimezone(), seconds + 90)
     host.book(token, seconds + 90)
     try:
         evidence.receipt(out / 'START.json', {'at': dt.datetime.now().astimezone().isoformat(), 'unit': unit})
@@ -57,6 +58,8 @@ def submit(spec, root, token=None):
 def worker(config):
     spec = json.loads(config.read_text())
     out, token = config.parent, spec['token']
+    host.window(dt.datetime.now().astimezone(), spec.get('seconds', 60) + 90)
+    host.scheduled(host.inventory(), dt.datetime.now().astimezone(), spec.get('seconds', 60) + 90)
     host.probe(spec.get('floors'))
     network = docker.create('network', token)
     volume = docker.create('volume', token)

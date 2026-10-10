@@ -27,7 +27,7 @@ class RunTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as temp:
                 path=Path(temp)/'config.json'
                 path.write_text(json.dumps(dict(token='a'*32,image='image',argv=['true'])))
-                with patch.object(run.host, 'probe', return_value={}), patch.object(run.docker, 'create'), patch.object(run.docker, 'container'), patch.object(run.docker, 'sample', return_value={'running':False,'exit':status}), patch.object(run.time, 'monotonic', side_effect=[0,gap]):
+                with patch.object(run.host, 'window'), patch.object(run.host, 'inventory'), patch.object(run.host, 'scheduled'), patch.object(run.host, 'probe', return_value={}), patch.object(run.docker, 'create'), patch.object(run.docker, 'container'), patch.object(run.docker, 'sample', return_value={'running':False,'exit':status}), patch.object(run.time, 'monotonic', side_effect=[0,gap]):
                     with self.assertRaises(RuntimeError): run.worker(path)
 
     def test_runtime_cap(self):
@@ -58,7 +58,7 @@ class RunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             path=Path(temp)/'config.json'
             path.write_text(json.dumps(dict(token='a'*32,image='image',argv=['true'],rehearsal_memory_after=0)))
-            with patch.object(run.host, 'metrics', return_value={'memory':30,'docker':300,'work':150,'load':0}), patch.object(run.docker, 'create', return_value='owned'), patch.object(run.docker, 'container', return_value='owned'), patch.object(run.docker, 'sample') as sample:
+            with patch.object(run.host, 'window'), patch.object(run.host, 'inventory'), patch.object(run.host, 'scheduled'), patch.object(run.host, 'metrics', return_value={'memory':30,'docker':300,'work':150,'load':0}), patch.object(run.docker, 'create', return_value='owned'), patch.object(run.docker, 'container', return_value='owned'), patch.object(run.docker, 'sample') as sample:
                 with self.assertRaisesRegex(RuntimeError, 'host_guard_failed'): run.worker(path)
                 sample.assert_not_called()
 

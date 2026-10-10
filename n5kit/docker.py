@@ -86,8 +86,9 @@ def cleanup(token, image, output, uid=None, gid=None):
     uid, gid = os.getuid() if uid is None else uid, os.getgid() if gid is None else gid
     error = None
     try:
-        cid = container(token, image, output, ['chown', '-hR', f'{uid}:{gid}', '/output'], role='ownership')
-        require(call('wait', cid, timeout=15) == '0', 'ownership_failed')
+        if any(Path(output).iterdir()):
+            cid = container(token, image, output, ['chown', '-hR', f'{uid}:{gid}', '/output'], role='ownership')
+            require(call('wait', cid, timeout=15) == '0', 'ownership_failed')
     except Exception as caught:
         error = caught
     for kind in ('container', 'network', 'volume'):
