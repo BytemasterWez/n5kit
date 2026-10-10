@@ -28,7 +28,7 @@ def submit(spec, root, token=None):
     memory, tasks, seconds = native_limits(spec) if mode == 'native' else ('256M', 64, seconds)
     require(mode == 'native' or 0 < seconds <= 1800, 'runtime_limit')
     host.window(dt.datetime.now().astimezone(), seconds + cleanup_cap + 90)
-    host.probe(spec.get('floors'))
+    host.probe(spec.get('floors'), spec.get('exception'))
     timers = host.inventory()
     host.scheduled(timers, dt.datetime.now().astimezone(), seconds + cleanup_cap + 90)
     root = Path(root).resolve()
@@ -73,7 +73,7 @@ def native_limits(spec):
 
 def scope(spec):
     caps = dict(zip(('memory_bytes', 'tasks', 'seconds'), native_limits(spec))) if spec.get('mode') == 'native' else {}
-    return {'caps': caps, 'mode': spec.get('mode', 'docker'), 'limits_scope': 'unit job and descendants; external services excluded' if spec.get('mode') == 'native' else 'Docker flags bound container; unit bounds worker'}
+    return {'exception': spec.get('exception'), 'caps': caps, 'mode': spec.get('mode', 'docker'), 'limits_scope': 'unit job and descendants; external services excluded' if spec.get('mode') == 'native' else 'Docker flags bound container; unit bounds worker'}
 
 
 def native_sample(job, token):
@@ -93,7 +93,7 @@ def worker(config):
     cleanup_cap = spec.get('cleanup_timeout', 60) if 'cleanup_argv' in spec else 0
     host.window(dt.datetime.now().astimezone(), spec.get('seconds', 60) + cleanup_cap + 90)
     host.scheduled(host.inventory(), dt.datetime.now().astimezone(), spec.get('seconds', 60) + cleanup_cap + 90)
-    host.probe(spec.get('floors'))
+    host.probe(spec.get('floors'), spec.get('exception'))
     native = spec.get('mode') == 'native'
     if native:
         evidence.receipt(out / 'worker-baseline.json', {'worker_pid': os.getpid(), 'worker_tasks': len(list(Path('/proc/self/task').iterdir()))})
@@ -109,7 +109,7 @@ def worker(config):
         floors = dict(spec.get('floors', host.FLOORS))
         if spec.get('rehearsal_memory_after') is not None and time.monotonic() - start >= spec['rehearsal_memory_after']:
             floors['memory'] = 10**9
-        values = host.probe(floors)
+        values = host.probe(floors, spec.get('exception'))
         sample = native_sample(job, token) if native else docker.sample(job, token)
         now = time.monotonic()
         require(now - previous <= 30, 'sample_gap')
@@ -148,7 +148,7 @@ def cleanup(config):
                                           'service_result': os.environ.get('SERVICE_RESULT', 'failed'), 'removed': removed, 'cleanup_evidence': detail, 'orphans_killed': job.get('orphans_killed'), **scope(spec)})
     except Exception:
         evidence.receipt(out / 'cleanup-failed.json', {'ok': False})
-        evidence.receipt(out / 'END.json', {'at': dt.datetime.now().astimezone().isoformat(), 'ok': False, 'cleanup_failed': True, 'cleanup_evidence': detail})
+        evidence.receipt(out / 'END.json', {'at': dt.datetime.now().astimezone().isoformat(), 'ok': False, 'cleanup_failed': True, 'cleanup_evidence': detail, **scope(spec)})
         raise
 
 

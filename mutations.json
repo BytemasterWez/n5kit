@@ -167,5 +167,40 @@
     "old": "host.book(token, seconds + cleanup_cap + 90)",
     "new": "host.book(token, seconds + 90)"
   },
-  {"name": "cleanup_evidence_binding", "file": "n5kit/run.py", "old": "'sha256': hashlib.sha256(path.read_bytes()).hexdigest()", "new": "'sha256': 'wrong'"}
+  {
+    "name": "cleanup_evidence_binding",
+    "file": "n5kit/run.py",
+    "old": "'sha256': hashlib.sha256(path.read_bytes()).hexdigest()",
+    "new": "'sha256': 'wrong'"
+  },
+  {
+    "name": "exception_authority",
+    "file": "n5kit/host.py",
+    "old": "('authority', 'card', 'expiry')",
+    "new": "('card', 'expiry')"
+  },
+  {
+    "name": "exception_expiry_required",
+    "file": "n5kit/host.py",
+    "old": "require(all(isinstance(exception.get(k), str) and exception[k].strip() for k in ('authority', 'card', 'expiry')), 'invalid_exception')\n            expiry = dt.datetime.fromisoformat(exception['expiry'])",
+    "new": "require(all(isinstance(exception.get(k), str) and exception[k].strip() for k in ('authority', 'card')), 'invalid_exception')\n            expiry = dt.datetime.fromisoformat(exception.get('expiry', '2026-10-11T00:00:00+00:00'))"
+  },
+  {
+    "name": "exception_expired",
+    "file": "n5kit/host.py",
+    "old": "0 < remaining <= 7200",
+    "new": "remaining <= 7200"
+  },
+  {
+    "name": "exception_max_age",
+    "file": "n5kit/host.py",
+    "old": "remaining <= 7200",
+    "new": "remaining <= 7201"
+  },
+  {
+    "name": "exception_hard_min",
+    "file": "n5kit/host.py",
+    "old": "minimum = FLOORS | {'memory': 8}",
+    "new": "minimum = FLOORS | {'memory': 7}"
+  }
 ]

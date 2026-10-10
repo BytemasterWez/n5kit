@@ -21,11 +21,19 @@ def metrics():
     return result
 
 
-def probe(floors=None):
+def probe(floors=None, exception=None):
     try:
         values = metrics()
+        minimum = FLOORS
+        if exception is not None:
+            require(isinstance(exception, dict), 'invalid_exception')
+            require(all(isinstance(exception.get(k), str) and exception[k].strip() for k in ('authority', 'card', 'expiry')), 'invalid_exception')
+            expiry = dt.datetime.fromisoformat(exception['expiry'])
+            remaining = (expiry - dt.datetime.now(dt.timezone.utc)).total_seconds()
+            require(0 < remaining <= 7200, 'exception_expiry')
+            minimum = FLOORS | {'memory': 8}
         limits = FLOORS | (floors or {})
-        require(set(limits) == set(FLOORS) and all(limits[k] >= v for k, v in FLOORS.items()), 'weakened_floor')
+        require(set(limits) == set(FLOORS) and all(limits[k] >= v for k, v in minimum.items()), 'weakened_floor')
         for key, floor in limits.items():
             require(values[key] > floor, 'host_' + key)
         require(values['load'] < 2 * (os.cpu_count() or 1), 'host_load')

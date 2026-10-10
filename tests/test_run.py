@@ -9,6 +9,7 @@ class RunTests(unittest.TestCase):
     def test_transient_service_owns_cleanup(self):
         with tempfile.TemporaryDirectory() as temp:
             token = 'a'*32
+            exception = {'authority': 'test approval', 'card': '#0227', 'expiry': '2099-01-01T00:00:00Z'}
             def execute(args, **kw):
                 if args[0]=='systemd-run':
                     self.assertNotIn('--scope', args)
@@ -19,18 +20,20 @@ class RunTests(unittest.TestCase):
                     self.assertTrue(any('ExecStopPost=' in v for v in args))
                     (Path(temp)/token/'END.json').write_text('{"ok":true}')
                 return type('Result', (), {'returncode':0})()
-            with patch.object(run.host, 'window'), patch.object(run.host, 'probe'), patch.object(run.host, 'inventory', return_value={}), patch.object(run.host, 'scheduled'), patch.object(run.host, 'book') as book, patch.object(run.subprocess, 'run', side_effect=execute):
-                out = run.submit({'seconds':60}, temp, token)
-            self.assertTrue((out/'START.json').exists())
+            with patch.object(run.host, 'window'), patch.object(run.host, 'probe') as probe, patch.object(run.host, 'inventory', return_value={}), patch.object(run.host, 'scheduled'), patch.object(run.host, 'book') as book, patch.object(run.subprocess, 'run', side_effect=execute):
+                out = run.submit({'seconds':60, 'exception':exception}, temp, token)
+                probe.assert_called_once_with(None, exception)
+            self.assertEqual(json.loads((out/'START.json').read_text())['exception'], exception)
             book.assert_called_once_with(token,150)
 
     def test_sample_gap_and_exit_failure(self):
         for gap, status in [(31,0),(5,1)]:
             with tempfile.TemporaryDirectory() as temp:
                 path=Path(temp)/'config.json'
-                path.write_text(json.dumps(dict(token='a'*32,image='image',argv=['true'])))
-                with patch.object(run.host, 'window'), patch.object(run.host, 'inventory'), patch.object(run.host, 'scheduled'), patch.object(run.host, 'probe', return_value={}), patch.object(run.docker, 'create'), patch.object(run.docker, 'container'), patch.object(run.docker, 'sample', return_value={'running':False,'exit':status}), patch.object(run.time, 'monotonic', side_effect=[0,gap]):
+                path.write_text(json.dumps(dict(token='a'*32,image='image',argv=['true'],exception={'authority':'recorded'})))
+                with patch.object(run.host, 'window'), patch.object(run.host, 'inventory'), patch.object(run.host, 'scheduled'), patch.object(run.host, 'probe', return_value={}) as probe, patch.object(run.docker, 'create'), patch.object(run.docker, 'container'), patch.object(run.docker, 'sample', return_value={'running':False,'exit':status}), patch.object(run.time, 'monotonic', side_effect=[0,gap]):
                     with self.assertRaises(RuntimeError): run.worker(path)
+                    self.assertEqual([c.args for c in probe.call_args_list], [(None, {'authority':'recorded'}), (run.host.FLOORS, {'authority':'recorded'})])
 
     def test_runtime_cap(self):
         for seconds in (0,1801):
@@ -40,21 +43,21 @@ class RunTests(unittest.TestCase):
     def test_cleanup_releases_after_removal(self):
         with tempfile.TemporaryDirectory() as temp:
             path=Path(temp)/'config.json'
-            path.write_text(json.dumps(dict(token='a'*32,image='image',uid=1000,gid=1000)))
+            path.write_text(json.dumps(dict(token='a'*32,image='image',uid=1000,gid=1000,exception={'authority':'recorded'})))
             with patch.object(run.docker, 'cleanup', return_value=[]) as cleanup, patch.object(run.host, 'release') as release:
                 run.cleanup(path)
                 cleanup.assert_called_once()
                 release.assert_called_once_with('a'*32)
-            self.assertFalse(json.loads((path.parent/'END.json').read_text())['ok'])
+            self.assertEqual({k: v for k, v in json.loads((path.parent/'END.json').read_text()).items() if k in ('ok', 'exception')}, {'ok':False, 'exception':{'authority':'recorded'}})
 
     def test_cleanup_failure_keeps_reservation(self):
         with tempfile.TemporaryDirectory() as temp:
             path=Path(temp)/'config.json'
-            path.write_text(json.dumps(dict(token='a'*32,image='image',uid=1000,gid=1000)))
+            path.write_text(json.dumps(dict(token='a'*32,image='image',uid=1000,gid=1000,exception={'authority':'recorded'})))
             with patch.object(run.docker, 'cleanup', side_effect=RuntimeError), patch.object(run.host, 'release') as release:
                 with self.assertRaises(RuntimeError): run.cleanup(path)
                 release.assert_not_called()
-            self.assertTrue((path.parent/'cleanup-failed.json').exists())
+            self.assertEqual({k: v for k, v in json.loads((path.parent/'END.json').read_text()).items() if k in ('cleanup_failed', 'exception')}, {'cleanup_failed':True, 'exception':{'authority':'recorded'}})
 
     def test_injected_memory_uses_real_guard_path(self):
         with tempfile.TemporaryDirectory() as temp:
