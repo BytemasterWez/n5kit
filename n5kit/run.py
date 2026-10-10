@@ -16,18 +16,20 @@ def submit(spec, root, token=None):
     mode, argv = spec.get('mode', 'docker'), spec.get('argv')
     require(mode in ('docker', 'native') and (mode != 'native' or
             isinstance(argv, list) and bool(argv) and all(isinstance(a, str) and a and '\0' not in a for a in argv)), 'invalid_job')
+    cleanup_cap = spec.get('cleanup_timeout', 60) if 'cleanup_argv' in spec else 0
+    require('cleanup_argv' in spec or 'cleanup_timeout' not in spec, 'invalid_cleanup')
     if 'cleanup_argv' in spec:
         cleanup_args = spec['cleanup_argv']
-        require(isinstance(cleanup_args, list) and bool(cleanup_args) and all(isinstance(a, str) and a and '\0' not in a for a in cleanup_args), 'invalid_cleanup')
+        require(mode == 'native' and type(cleanup_cap) is int and 0 < cleanup_cap <= 720 and isinstance(cleanup_args, list) and bool(cleanup_args) and all(isinstance(a, str) and a and '\0' not in a for a in cleanup_args), 'invalid_cleanup')
     token = token or uuid.uuid4().hex
     token_ok(token)
     seconds = spec.get('seconds', 60)
     memory, tasks, seconds = native_limits(spec) if mode == 'native' else ('256M', 64, seconds)
     require(mode == 'native' or 0 < seconds <= 1800, 'runtime_limit')
-    host.window(dt.datetime.now().astimezone(), seconds + 90)
+    host.window(dt.datetime.now().astimezone(), seconds + cleanup_cap + 90)
     host.probe(spec.get('floors'))
     timers = host.inventory()
-    host.scheduled(timers, dt.datetime.now().astimezone(), seconds + 90)
+    host.scheduled(timers, dt.datetime.now().astimezone(), seconds + cleanup_cap + 90)
     root = Path(root).resolve()
     require(re.fullmatch(r'[/A-Za-z0-9_.-]+', str(root)) is not None, 'unsafe_unit_path')
     root.mkdir(parents=True, exist_ok=True)
@@ -41,21 +43,21 @@ def submit(spec, root, token=None):
     unit = 'n5kit-' + token
     command = [sys.executable, '-m', 'n5kit.run']
     stop = shlex.join(command + ['cleanup', str(config)])
-    properties = [f'RuntimeMaxSec={seconds}', 'TimeoutStopSec=90', f'MemoryMax={memory}', f'TasksMax={tasks}',
+    properties = [f'RuntimeMaxSec={seconds}', f'TimeoutStopSec={cleanup_cap + 90}', f'MemoryMax={memory}', f'TasksMax={tasks}',
                   'KillMode=control-group', 'SendSIGKILL=yes', f'ExecStopPost={stop}', 'UMask=0077']
     args = ['systemd-run', '--user', '--no-ask-password', '--wait', '--collect', '--quiet', '--setenv=N5KIT_REAL=1', '--setenv=N5KIT_OFFLINE=0', f'--unit={unit}',
             f'--working-directory={Path(__file__).resolve().parent.parent}']
     args += [f'--property={value}' for value in properties]
-    host.window(dt.datetime.now().astimezone(), seconds + 90)
-    host.book(token, seconds + 90)
+    host.window(dt.datetime.now().astimezone(), seconds + cleanup_cap + 90)
+    host.book(token, seconds + cleanup_cap + 90)
     try:
         evidence.receipt(out / 'START.json', {'at': dt.datetime.now().astimezone().isoformat(), 'unit': unit, **scope(spec)})
-        result = subprocess.run(args + command + ['worker', str(config)], timeout=seconds+120)
+        result = subprocess.run(args + command + ['worker', str(config)], timeout=seconds+cleanup_cap+120)
         require(result.returncode == 0 and (out / 'END.json').exists(), 'run_failed')
         end = json.loads((out / 'END.json').read_text())
         require(end['ok'], 'cleanup_failed')
     except BaseException:
-        subprocess.run(['systemctl', '--user', 'stop', unit], capture_output=True, timeout=100)
+        subprocess.run(['systemctl', '--user', 'stop', unit], capture_output=True, timeout=cleanup_cap+100)
         if not (out / 'END.json').exists():
             cleanup(config)
         raise
@@ -87,8 +89,9 @@ def native_sample(job, token):
 def worker(config):
     spec = json.loads(config.read_text())
     out, token = config.parent, spec['token']
-    host.window(dt.datetime.now().astimezone(), spec.get('seconds', 60) + 90)
-    host.scheduled(host.inventory(), dt.datetime.now().astimezone(), spec.get('seconds', 60) + 90)
+    cleanup_cap = spec.get('cleanup_timeout', 60) if 'cleanup_argv' in spec else 0
+    host.window(dt.datetime.now().astimezone(), spec.get('seconds', 60) + cleanup_cap + 90)
+    host.scheduled(host.inventory(), dt.datetime.now().astimezone(), spec.get('seconds', 60) + cleanup_cap + 90)
     host.probe(spec.get('floors'))
     native = spec.get('mode') == 'native'
     if native:
@@ -127,7 +130,7 @@ def cleanup(config):
         if 'cleanup_argv' in spec:
             status = None
             try:
-                status = subprocess.run(spec['cleanup_argv'], shell=False, cwd=out, timeout=60,
+                status = subprocess.run(spec['cleanup_argv'], shell=False, cwd=out, timeout=spec.get('cleanup_timeout', 60),
                                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
             finally:
                 evidence.receipt(out / 'cleanup-command.json', {'returncode': status})

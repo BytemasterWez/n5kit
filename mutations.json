@@ -154,5 +154,17 @@
     "file": "n5kit/run.py",
     "old": "require(status == 0, 'cleanup_command_failed')",
     "new": "require(True, 'cleanup_command_failed')"
+  },
+  {
+    "name": "cleanup_timeout_cap",
+    "file": "n5kit/run.py",
+    "old": "cleanup_cap <= 720",
+    "new": "cleanup_cap <= 721"
+  },
+  {
+    "name": "cleanup_window_reserve",
+    "file": "n5kit/run.py",
+    "old": "host.book(token, seconds + cleanup_cap + 90)",
+    "new": "host.book(token, seconds + 90)"
   }
 ]
