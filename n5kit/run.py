@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import re
 import shlex
-import subprocess
+from .backends import commands as subprocess
 import sys
 import time
 import uuid
@@ -40,7 +40,7 @@ def submit(spec, root, token=None):
     stop = shlex.join(command + ['cleanup', str(config)])
     properties = [f'RuntimeMaxSec={seconds}', 'TimeoutStopSec=90', f'MemoryMax={memory}', f'TasksMax={tasks}',
                   'KillMode=control-group', 'SendSIGKILL=yes', f'ExecStopPost={stop}', 'UMask=0077']
-    args = ['systemd-run', '--user', '--no-ask-password', '--wait', '--collect', '--quiet', f'--unit={unit}',
+    args = ['systemd-run', '--user', '--no-ask-password', '--wait', '--collect', '--quiet', '--setenv=N5KIT_REAL=1', '--setenv=N5KIT_OFFLINE=0', f'--unit={unit}',
             f'--working-directory={Path(__file__).resolve().parent.parent}']
     args += [f'--property={value}' for value in properties]
     host.window(dt.datetime.now().astimezone(), seconds + 90)

@@ -5,8 +5,8 @@ export PYTHONPATH := $(N5KIT):$(CURDIR)
 check:
 	$(PYTHON) -m n5kit.check /tmp/project-check-$$(date +%s%N).json
 rehearse:
-	$(PYTHON) -m n5kit.run start "$(REHEARSAL_SPEC)" "$(OUT)"
+	N5KIT_REAL=1 $(PYTHON) -m n5kit.run start "$(REHEARSAL_SPEC)" "$(OUT)"
 run:
-	$(PYTHON) -m n5kit.run start "$(RUN_SPEC)" "$(OUT)"
+	N5KIT_REAL=1 $(PYTHON) -m n5kit.run start "$(RUN_SPEC)" "$(OUT)"
 export:
 	git archive --format=tar HEAD > /tmp/project-$$(git rev-parse HEAD).tar

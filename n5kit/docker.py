@@ -3,7 +3,7 @@ import json
 import os
 import re
 from pathlib import Path
-import subprocess
+from .backends import commands as subprocess
 from . import require, token_ok
 
 LABEL = 'n5kit.token'

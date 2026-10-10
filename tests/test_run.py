@@ -12,6 +12,8 @@ class RunTests(unittest.TestCase):
             def execute(args, **kw):
                 if args[0]=='systemd-run':
                     self.assertNotIn('--scope', args)
+                    self.assertIn('--setenv=N5KIT_REAL=1', args)
+                    self.assertIn('--setenv=N5KIT_OFFLINE=0', args)
                     for value in ['RuntimeMaxSec=60', 'MemoryMax=256M', 'TasksMax=64', 'KillMode=control-group']:
                         self.assertIn('--property='+value, args)
                     self.assertTrue(any('ExecStopPost=' in v for v in args))
@@ -32,7 +34,7 @@ class RunTests(unittest.TestCase):
 
     def test_runtime_cap(self):
         for seconds in (0,1801):
-            with self.assertRaisesRegex(RuntimeError,'runtime_limit'):
+            with patch.object(run.host, 'window', side_effect=AssertionError('admission reached')), self.assertRaisesRegex(RuntimeError,'runtime_limit'):
                 run.submit({'seconds':seconds}, '/tmp/unused-n5kit')
 
     def test_cleanup_releases_after_removal(self):

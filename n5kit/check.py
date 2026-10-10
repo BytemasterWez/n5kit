@@ -22,7 +22,7 @@ def scan(tree):
 
 def tests(tree):
     dependency = '' if (tree / 'n5kit').is_dir() else os.pathsep + str(Path(__file__).resolve().parent.parent)
-    env = dict(os.environ, PYTHONPATH=str(tree) + dependency, PYTHONDONTWRITEBYTECODE='1')
+    env = dict(os.environ, PYTHONPATH=str(tree) + dependency, PYTHONDONTWRITEBYTECODE='1', N5KIT_REAL='0', N5KIT_OFFLINE='1')
     return subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests'], cwd=tree, env=env,
                           capture_output=True, timeout=60)
 

@@ -130,5 +130,17 @@
     "file": "n5kit/run.py",
     "old": "(8*2**30, 256, 14400)",
     "new": "(8*2**30, 256, 14401)"
+  },
+  {
+    "name": "real_backend_opt_in",
+    "file": "n5kit/backends.py",
+    "old": "if offline() or os.environ.get('N5KIT_REAL') != '1':",
+    "new": "if False:"
+  },
+  {
+    "name": "offline_audit",
+    "file": "n5kit/backends.py",
+    "old": "if not offline(): return",
+    "new": "if True: return"
   }
 ]

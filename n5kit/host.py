@@ -4,8 +4,9 @@ import fcntl
 import os
 import re
 from pathlib import Path
-import subprocess
+from .backends import commands as subprocess
 from . import require, token_ok
+from .backends import real
 
 RESERVATIONS = Path('/home/wez/Work/HOST-RESERVATIONS.md')
 FLOORS = {'memory': 16, 'docker': 256, 'work': 100}
@@ -67,6 +68,7 @@ def scheduled(timers, now, seconds):
 
 def reservation(token, seconds, path=RESERVATIONS):
     token_ok(token)
+    if path.resolve() == RESERVATIONS: real()
     with (path.parent / '.ai-continuity.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         text = path.read_text()
