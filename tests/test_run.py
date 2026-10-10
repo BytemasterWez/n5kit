@@ -84,6 +84,13 @@ class RunTests(unittest.TestCase):
             self.assertEqual(end['orphans_killed'],1)
             self.assertIn('external services excluded',end['limits_scope'])
 
+    def test_native_limits(self):
+        self.assertEqual(run.native_limits({'memory':8*2**30,'pids':256,'seconds':14400}), (8*2**30,256,14400))
+        for key, top in (('memory',8*2**30), ('pids',256), ('seconds',14400)):
+            for value in (True, 0, -1, '10', 1.5, top+1):
+                with patch.object(run.host, 'window', side_effect=AssertionError('admission reached')), self.assertRaisesRegex(RuntimeError,'native_limits'):
+                    run.submit({'mode':'native','argv':['true'],key:value}, '/tmp/unused-n5kit')
+
     def test_native_cgroup_oom_and_exit(self):
         files={'cgroup':'0::/n5kit-'+('a'*32)+'.service', 'memory.events':'oom 0\noom_kill 0', 'memory.peak':'1024','pids.current':'2','cgroup.procs':str(run.os.getpid())+'\n99'}
         with patch.object(Path, 'read_text', lambda p: files[p.name]):

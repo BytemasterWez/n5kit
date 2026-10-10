@@ -112,5 +112,23 @@
     "file": "n5kit/run.py",
     "old": "group.name == 'n5kit-' + token + '.service'",
     "new": "True"
+  },
+  {
+    "name": "native_memory_cap",
+    "file": "n5kit/run.py",
+    "old": "(8*2**30, 256, 14400)",
+    "new": "(8*2**30+1, 256, 14400)"
+  },
+  {
+    "name": "native_tasks_cap",
+    "file": "n5kit/run.py",
+    "old": "(8*2**30, 256, 14400)",
+    "new": "(8*2**30, 257, 14400)"
+  },
+  {
+    "name": "native_time_cap",
+    "file": "n5kit/run.py",
+    "old": "(8*2**30, 256, 14400)",
+    "new": "(8*2**30, 256, 14401)"
   }
 ]

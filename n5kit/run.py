@@ -19,7 +19,8 @@ def submit(spec, root, token=None):
     token = token or uuid.uuid4().hex
     token_ok(token)
     seconds = spec.get('seconds', 60)
-    require(0 < seconds <= 1800, 'runtime_limit')
+    memory, tasks, seconds = native_limits(spec) if mode == 'native' else ('256M', 64, seconds)
+    require(mode == 'native' or 0 < seconds <= 1800, 'runtime_limit')
     host.window(dt.datetime.now().astimezone(), seconds + 90)
     host.probe(spec.get('floors'))
     timers = host.inventory()
@@ -37,7 +38,7 @@ def submit(spec, root, token=None):
     unit = 'n5kit-' + token
     command = [sys.executable, '-m', 'n5kit.run']
     stop = shlex.join(command + ['cleanup', str(config)])
-    properties = [f'RuntimeMaxSec={seconds}', 'TimeoutStopSec=90', 'MemoryMax=256M', 'TasksMax=64',
+    properties = [f'RuntimeMaxSec={seconds}', 'TimeoutStopSec=90', f'MemoryMax={memory}', f'TasksMax={tasks}',
                   'KillMode=control-group', 'SendSIGKILL=yes', f'ExecStopPost={stop}', 'UMask=0077']
     args = ['systemd-run', '--user', '--no-ask-password', '--wait', '--collect', '--quiet', f'--unit={unit}',
             f'--working-directory={Path(__file__).resolve().parent.parent}']
@@ -58,8 +59,15 @@ def submit(spec, root, token=None):
     return out
 
 
+def native_limits(spec):
+    values = (spec.get('memory', 256*2**20), spec.get('pids', 64), spec.get('seconds', 60))
+    require(all(type(v) is int and 0 < v <= cap for v, cap in zip(values, (8*2**30, 256, 14400))), 'native_limits')
+    return values
+
+
 def scope(spec):
-    return {'mode': spec.get('mode', 'docker'), 'limits_scope': 'unit job and descendants; external services excluded' if spec.get('mode') == 'native' else 'Docker flags bound container; unit bounds worker'}
+    caps = dict(zip(('memory_bytes', 'tasks', 'seconds'), native_limits(spec))) if spec.get('mode') == 'native' else {}
+    return {'caps': caps, 'mode': spec.get('mode', 'docker'), 'limits_scope': 'unit job and descendants; external services excluded' if spec.get('mode') == 'native' else 'Docker flags bound container; unit bounds worker'}
 
 
 def native_sample(job, token):
