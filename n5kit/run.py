@@ -16,6 +16,9 @@ def submit(spec, root, token=None):
     mode, argv = spec.get('mode', 'docker'), spec.get('argv')
     require(mode in ('docker', 'native') and (mode != 'native' or
             isinstance(argv, list) and bool(argv) and all(isinstance(a, str) and a and '\0' not in a for a in argv)), 'invalid_job')
+    if 'cleanup_argv' in spec:
+        cleanup_args = spec['cleanup_argv']
+        require(isinstance(cleanup_args, list) and bool(cleanup_args) and all(isinstance(a, str) and a and '\0' not in a for a in cleanup_args), 'invalid_cleanup')
     token = token or uuid.uuid4().hex
     token_ok(token)
     seconds = spec.get('seconds', 60)
@@ -121,6 +124,14 @@ def cleanup(config):
     out = config.parent
     try:
         removed = [] if spec.get('mode') == 'native' else docker.cleanup(spec['token'], spec['image'], out / 'output', spec['uid'], spec['gid'])
+        if 'cleanup_argv' in spec:
+            status = None
+            try:
+                status = subprocess.run(spec['cleanup_argv'], shell=False, cwd=out, timeout=60,
+                                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+            finally:
+                evidence.receipt(out / 'cleanup-command.json', {'returncode': status})
+            require(status == 0, 'cleanup_command_failed')
         host.release(spec['token'])
         job = json.loads((out / 'job.json').read_text()) if (out / 'job.json').exists() else {}
         ok = os.environ.get('SERVICE_RESULT', 'failed') == 'success' and (out / 'job.json').exists()

@@ -148,5 +148,11 @@
     "file": "n5kit/run.py",
     "old": "int((group / 'pids.peak').read_text())",
     "new": "int((group / 'pids.current').read_text())"
+  },
+  {
+    "name": "cleanup_exit",
+    "file": "n5kit/run.py",
+    "old": "require(status == 0, 'cleanup_command_failed')",
+    "new": "require(True, 'cleanup_command_failed')"
   }
 ]

@@ -53,6 +53,8 @@ def execute(case, image, root):
         if native:
             code = f"import os,time; from pathlib import Path; Path('root.txt').write_text('synthetic'); child=os.fork(); Path('child' if child==0 else 'parent').write_text(str(os.getpid())); time.sleep(90 if child==0 else {duration})"
             spec = {'mode':'native', 'argv':[sys.executable,'-c',code], 'seconds':120}
+        if native and case == 'kill':
+            spec['cleanup_argv'] = [sys.executable, '-c', "from pathlib import Path; Path('cleanup-marker').write_text('synthetic')"]
         if case == 'memory':
             spec['rehearsal_memory_after'] = 2
         path = root/'spec.json'
@@ -76,6 +78,9 @@ def execute(case, image, root):
         require(end['ok'] == (case == 'pass'), 'unexpected_job_result')
         require((out/'output/root.txt').stat().st_uid == os.getuid() == 1000, 'wrong_output_owner')
         require((out/'output/root.txt').stat().st_mode & 0o777 == 0o600, 'private_mode_changed')
+        if native and case == 'kill':
+            require((out/'cleanup-marker').read_text() == 'synthetic', 'cleanup_callback_missing')
+            require(json.loads((out/'cleanup-command.json').read_text()) == {'returncode': 0}, 'cleanup_callback_failed')
         if native:
             for name in ('parent', 'child'):
                 pid = int((out/'output'/name).read_text())
