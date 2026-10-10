@@ -31,7 +31,7 @@ class DockerTests(unittest.TestCase):
                 return '0::/fake' if str(path).startswith('/proc/') else {'memory.events':events,'memory.peak':'1000000','pids.peak':'3'}[path.name]
             with patch.object(docker, 'inspect', return_value=item), patch.object(Path, 'read_text', read):
                 with self.assertRaises((RuntimeError, KeyError)): docker.sample('id', TOKEN)
-        item['State']['OOMKilled'] = True
+        item['State'].update(OOMKilled=True, Running=False, ExitCode=137)
         with patch.object(docker, 'inspect', return_value=item):
             with self.assertRaises(RuntimeError): docker.sample('id', TOKEN)
 

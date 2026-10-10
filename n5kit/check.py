@@ -44,7 +44,7 @@ def main(repo, receipt_path):
             require(original.count(rule['old']) == 1, 'mutation_not_unique')
             path.write_text(original.replace(rule['old'], rule['new']))
             try:
-                require(tests(tree).returncode != 0, 'mutation_survived')
+                require(tests(tree).returncode != 0, 'mutation_survived:' + rule['name'])
                 killed.append(rule['name'])
             finally:
                 path.write_text(original)
