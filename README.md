@@ -1,6 +1,6 @@
 # n5kit
 
-Small shared run guards for Wesley's N5. This is a local candidate for #0228, not yet qualified or adopted by County, FedSpend or FirstPass.
+Small shared run guards for Wesley's N5. Built and locally qualified under #0228; gate decisions and exact evidence are in evidence/FINAL-REVIEW.md and the board. Adoption by other projects is separate.
 
 Use Python3.11+, Docker CLI and a user systemd manager. Job images must run as root and provide a chown executable for owned output repair; other images fail closed. `make check` runs preflight, Ruff, tests from a clean Git archive, guard mutations and a secret scan. Commit before checking; working-tree changes are refused. `make export` produces a clean source archive and SHA256 inventory in a fresh temporary directory. No install, publication or remote CI execution is implicit.
 
@@ -18,7 +18,7 @@ Admission also refuses active snapshot/backup/restore services or any such timer
 
 Native jobs use `{"mode":"native","argv":["/absolute/python","/absolute/script.py"],"seconds":120}` with the same `make run` entry point. The script runs from its fresh output directory; there is no shell expansion, image or Docker resource. Native stdout/stderr/stdin are DEVNULL; write intended artifacts to the working directory. The service caps the job and all forks at256MiB/64tasks, and unit stop kills outstanding descendants. END's `orphans_killed` is the count observed at successful parent exit (null if interrupted before that observation). A successful parent may therefore leave children that are forcibly stopped; callers must inspect this count when detached work would be unexpected.
 
-An already-running localhost model/service is outside this unit: MemoryMax does not cap Gemma/LM Studio memory. Host floors remain active and receipts state this scope. The native acceptance cases `native-pass` and `native-kill` use only synthetic Python forks, never model calls. Docker's pass/term/kill/snapshot/booked/memory acceptance on18563e5 is checked; the native extension awaits its own final review.
+An already-running localhost model/service is outside this unit: MemoryMax does not cap Gemma/LM Studio memory. Host floors remain active and receipts state this scope. The native acceptance cases `native-pass` and `native-kill` use only synthetic Python forks, never model calls. Docker's pass/term/kill/snapshot/booked/memory acceptance on18563e5 is checked; the native extension has passed its synthetic pass/KILL acceptance; see the final review record.
 
 Native cap amendment (lead21:14:32,10October): optional `memory` in bytes (default268435456), `pids` in tasks (default64), `seconds` (default60), all positive integers (booleans rejected), bounded at8GiB/256tasks/14400seconds. START/END record applied caps. These are maximum configurable values, not permission to bypass snapshot/calendar admission: with the current fixed hourly window, a4h job cannot be admitted. Docker worker limits and≤1800second rule are unchanged. Each native hard bound has a killed mutation test.
 

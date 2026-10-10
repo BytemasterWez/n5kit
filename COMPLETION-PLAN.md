@@ -7,3 +7,7 @@ Stage1: five modules, tests, template and make check; estimate half a day, targe
 Finish requires all six acceptance categories, clean archive gate, killed guard mutations, review CLEAR and traceable hashes. Future project adoption is separate; FirstPass tooling must stay unchanged throughout its qualification. No public deployment, repository push, paid service or broad framework is in this task. Library adoption must not become an excuse to resume County before its gate.
 
 10October21:12: Docker six-case acceptance complete on18563e5 and independently checked by fable-county. Lead-approved native addition follows before final completion: direct-command mode plus synthetic pass/fork/SIGKILL proofs, +80/+60 lines, estimate under1hour tonight. Native plan CLEAR21:12; result check and final lead gate still pending.
+
+## Completion record — 10 October 2026
+
+Build and bounded local acceptance completed tonight. Lead recorded G4 PASS for fb38b26 at21:27; native peak-task follow-up cca32fb passed code check and its rerun at21:29. The final checker post on#0228 records handoff acceptance. All resources/reservations removed; no adoption or publication. Evidence: FINAL-REVIEW.md, final-acceptance.json, native-peak-result.json. Long-job calendar policy is deferred to the18October review; current admission remains fail-closed.
