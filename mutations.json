@@ -1,0 +1,74 @@
+[
+  {
+    "name": "floor",
+    "file": "n5kit/host.py",
+    "old": "values[key] > floor",
+    "new": "values[key] >= floor"
+  },
+  {
+    "name": "window_start",
+    "file": "n5kit/host.py",
+    "old": "5 <= now.minute",
+    "new": "4 <= now.minute"
+  },
+  {
+    "name": "window_end",
+    "file": "n5kit/host.py",
+    "old": "now.minute < 52",
+    "new": "now.minute < 53"
+  },
+  {
+    "name": "booked",
+    "file": "n5kit/host.py",
+    "old": "require(not rows, 'host_booked')",
+    "new": "require(True, 'host_booked')"
+  },
+  {
+    "name": "label",
+    "file": "n5kit/docker.py",
+    "old": "labels.get(LABEL) == token",
+    "new": "True"
+  },
+  {
+    "name": "load",
+    "file": "n5kit/host.py",
+    "old": "values['load'] < 2",
+    "new": "values['load'] <= 2"
+  },
+  {
+    "name": "fit",
+    "file": "n5kit/host.py",
+    "old": "< now.replace(minute=52",
+    "new": "<= now.replace(minute=52"
+  },
+  {
+    "name": "gap",
+    "file": "n5kit/run.py",
+    "old": "now - previous <= 30",
+    "new": "now - previous <= 31"
+  },
+  {
+    "name": "runtime",
+    "file": "n5kit/run.py",
+    "old": "seconds <= 1800",
+    "new": "seconds <= 1801"
+  },
+  {
+    "name": "job_exit",
+    "file": "n5kit/run.py",
+    "old": "sample['exit'] == 0",
+    "new": "True"
+  },
+  {
+    "name": "oom_flag",
+    "file": "n5kit/docker.py",
+    "old": "not state['OOMKilled']",
+    "new": "True"
+  },
+  {
+    "name": "release",
+    "file": "n5kit/run.py",
+    "old": "host.release(spec['token'])",
+    "new": "pass"
+  }
+]

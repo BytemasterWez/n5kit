@@ -1,0 +1,21 @@
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require pinned library
+        env:
+          REF: ${{ vars.N5KIT_REVISION }}
+        run: test "${#REF}" = 40
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.N5KIT_REPOSITORY }}
+          ref: ${{ vars.N5KIT_REVISION }}
+          path: .n5kit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install ruff==0.14.0
+      - run: make check N5KIT="$GITHUB_WORKSPACE/.n5kit"
