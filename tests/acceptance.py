@@ -71,7 +71,7 @@ def execute(case, image, root):
             require(not docker.owned(kind, token), 'acceptance_leak')
         require(token not in host.RESERVATIONS.read_text(), 'reservation_leak')
         if case == 'memory':
-            require(json.loads((out/'failure.json').read_text())['error'] == 'host_guard_failed', 'wrong_fault')
+            require(json.loads((out/'failure.json').read_text()) == {'error':'host_guard_failed','cause':'host_memory'}, 'wrong_fault')
         samples = [json.loads(line) for line in (out/'samples.jsonl').read_text().splitlines()]
         peaks = [row['container'] for row in samples if row['container']['running']]
         require(peaks and max(row['gap'] for row in samples) <= 30, 'sample_coverage')

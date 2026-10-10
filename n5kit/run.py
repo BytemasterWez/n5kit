@@ -96,6 +96,7 @@ def cleanup(config):
 
 
 if __name__ == '__main__':
+    mode = ''
     try:
         mode, path = sys.argv[1:3]
         if mode in ('worker', 'cleanup'):
@@ -105,6 +106,6 @@ if __name__ == '__main__':
             print(submit(json.loads(Path(path).read_text()), sys.argv[3]))
     except Exception as error:
         if mode == 'worker':
-            evidence.receipt(Path(path).parent / 'failure.json', {'error': str(error) if isinstance(error, RuntimeError) else type(error).__name__})
+            evidence.receipt(Path(path).parent / 'failure.json', {'error': str(error) if isinstance(error, RuntimeError) else type(error).__name__, 'cause': str(error.__cause__) if isinstance(error.__cause__, RuntimeError) else None})
         print(type(error).__name__, file=sys.stderr)
         sys.exit(1)
