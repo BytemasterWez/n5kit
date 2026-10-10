@@ -8,7 +8,7 @@ jobs:
       - name: Require pinned library
         env:
           REF: ${{ vars.N5KIT_REVISION }}
-        run: test "${#REF}" = 40
+        run: '[[ "$REF" =~ ^[0-9a-f]{40}$ ]]'
       - uses: actions/checkout@v4
         with:
           repository: ${{ vars.N5KIT_REPOSITORY }}

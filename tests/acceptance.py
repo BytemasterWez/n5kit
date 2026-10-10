@@ -72,6 +72,12 @@ def execute(case, image, root):
         require(token not in host.RESERVATIONS.read_text(), 'reservation_leak')
         if case == 'memory':
             require(json.loads((out/'failure.json').read_text())['error'] == 'host_guard_failed', 'wrong_fault')
+        samples = [json.loads(line) for line in (out/'samples.jsonl').read_text().splitlines()]
+        peaks = [row['container'] for row in samples if row['container']['running']]
+        require(peaks and max(row['gap'] for row in samples) <= 30, 'sample_coverage')
+        if case == 'pass':
+            require(max(row['peak'] for row in peaks) < 256*2**20 and max(row['pids'] for row in peaks) < 32, 'normal_resource_margin')
+            require((dt.datetime.fromisoformat(end['at']) - dt.datetime.fromisoformat(receipt['at'])).total_seconds() < 60, 'normal_time_margin')
         receipt.update(token=token, unit_end=end, launcher_returncode=process.returncode, output_uid=1000)
     receipt['ok'] = True
     evidence.receipt(root/'acceptance.json', receipt)
