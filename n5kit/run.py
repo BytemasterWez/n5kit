@@ -13,6 +13,9 @@ from . import docker, evidence, host, require, token_ok
 
 
 def submit(spec, root, token=None):
+    mode, argv = spec.get('mode', 'docker'), spec.get('argv')
+    require(mode in ('docker', 'native') and (mode != 'native' or
+            isinstance(argv, list) and bool(argv) and all(isinstance(a, str) and a and '\0' not in a for a in argv)), 'invalid_job')
     token = token or uuid.uuid4().hex
     token_ok(token)
     seconds = spec.get('seconds', 60)
@@ -42,7 +45,7 @@ def submit(spec, root, token=None):
     host.window(dt.datetime.now().astimezone(), seconds + 90)
     host.book(token, seconds + 90)
     try:
-        evidence.receipt(out / 'START.json', {'at': dt.datetime.now().astimezone().isoformat(), 'unit': unit})
+        evidence.receipt(out / 'START.json', {'at': dt.datetime.now().astimezone().isoformat(), 'unit': unit, **scope(spec)})
         result = subprocess.run(args + command + ['worker', str(config)], timeout=seconds+120)
         require(result.returncode == 0 and (out / 'END.json').exists(), 'run_failed')
         end = json.loads((out / 'END.json').read_text())
@@ -55,31 +58,51 @@ def submit(spec, root, token=None):
     return out
 
 
+def scope(spec):
+    return {'mode': spec.get('mode', 'docker'), 'limits_scope': 'unit job and descendants; external services excluded' if spec.get('mode') == 'native' else 'Docker flags bound container; unit bounds worker'}
+
+
+def native_sample(job, token):
+    group = Path('/sys/fs/cgroup') / Path('/proc/self/cgroup').read_text().strip().split('0::', 1)[1].lstrip('/')
+    require(group.name == 'n5kit-' + token + '.service', 'native_outside_unit')
+    status = job.poll()
+    events = dict(line.split() for line in (group / 'memory.events').read_text().splitlines())
+    require(int(events['oom']) == 0 and int(events['oom_kill']) == 0, 'native_oom')
+    descendants = [int(p) for p in (group / 'cgroup.procs').read_text().split() if int(p) != os.getpid()]
+    return {'running': status is None, 'exit': status, 'peak': int((group / 'memory.peak').read_text()),
+            'pids': int((group / 'pids.current').read_text()), 'descendants': descendants}
+
+
 def worker(config):
     spec = json.loads(config.read_text())
     out, token = config.parent, spec['token']
     host.window(dt.datetime.now().astimezone(), spec.get('seconds', 60) + 90)
     host.scheduled(host.inventory(), dt.datetime.now().astimezone(), spec.get('seconds', 60) + 90)
     host.probe(spec.get('floors'))
-    network = docker.create('network', token)
-    volume = docker.create('volume', token)
-    cid = docker.container(token, spec['image'], out / 'output', spec['argv'], spec.get('memory', 512*2**20),
-                           spec.get('pids', 64), network=network, volume=volume)
+    native = spec.get('mode') == 'native'
+    if native:
+        job = subprocess.Popen(spec['argv'], shell=False, cwd=out / 'output', stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        network = docker.create('network', token)
+        volume = docker.create('volume', token)
+        job = docker.container(token, spec['image'], out / 'output', spec['argv'], spec.get('memory', 512*2**20),
+                               spec.get('pids', 64), network=network, volume=volume)
     start = previous = time.monotonic()
     while True:
         floors = dict(spec.get('floors', host.FLOORS))
         if spec.get('rehearsal_memory_after') is not None and time.monotonic() - start >= spec['rehearsal_memory_after']:
             floors['memory'] = 10**9
         values = host.probe(floors)
-        sample = docker.sample(cid, token)
+        sample = native_sample(job, token) if native else docker.sample(job, token)
         now = time.monotonic()
         require(now - previous <= 30, 'sample_gap')
         with (out / 'samples.jsonl').open('a') as stream:
-            stream.write(json.dumps({'at': time.time(), 'gap': now-previous, 'host': values, 'container': sample}) + '\n')
+            stream.write(json.dumps({'at': time.time(), 'gap': now-previous, 'host': values, ('native' if native else 'container'): sample}) + '\n')
         previous = now
         if not sample['running']:
             require(sample['exit'] == 0, 'job_failed')
-            evidence.receipt(out / 'job.json', {'ok': True, 'elapsed': now-start})
+            evidence.receipt(out / 'job.json', {'ok': True, 'elapsed': now-start, 'orphans_killed': len(sample['descendants']) if native else None})
             return
         time.sleep(max(0, 5 - (time.monotonic() - now)))
 
@@ -88,11 +111,12 @@ def cleanup(config):
     spec = json.loads(config.read_text())
     out = config.parent
     try:
-        removed = docker.cleanup(spec['token'], spec['image'], out / 'output', spec['uid'], spec['gid'])
+        removed = [] if spec.get('mode') == 'native' else docker.cleanup(spec['token'], spec['image'], out / 'output', spec['uid'], spec['gid'])
         host.release(spec['token'])
+        job = json.loads((out / 'job.json').read_text()) if (out / 'job.json').exists() else {}
         ok = os.environ.get('SERVICE_RESULT', 'failed') == 'success' and (out / 'job.json').exists()
         evidence.receipt(out / 'END.json', {'at': dt.datetime.now().astimezone().isoformat(), 'ok': ok,
-                                          'service_result': os.environ.get('SERVICE_RESULT', 'failed'), 'removed': removed})
+                                          'service_result': os.environ.get('SERVICE_RESULT', 'failed'), 'removed': removed, 'orphans_killed': job.get('orphans_killed'), **scope(spec)})
     except Exception:
         evidence.receipt(out / 'cleanup-failed.json', {'ok': False})
         evidence.receipt(out / 'END.json', {'at': dt.datetime.now().astimezone().isoformat(), 'ok': False, 'cleanup_failed': True})

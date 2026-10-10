@@ -7,3 +7,11 @@
 5. Check/template: `make check`, `make rehearse`, `make run`, `make export`; CI template invokes check with a pinned library checkout; mutation suite kills strict floor/window/booking/label changes. Independent diff and make-check review by fable-county.
 
 Real acceptance is six cases, with term and kill separate, using a local immutable Python-capable image and synthetic text only. Each jobseconds120, cleanup90, ≤512MiB container, ≤64PIDs; normal elapsed<60seconds and sampled memory<256MiB/PIDs<32. Negative cases intentionally cross only their named boundary. Results are per-case, not percentiles or production qualification. No new source parser: source-onboarding is N/A; Docker/systemd metadata and /proc shapes are exercised locally. No new remote calls/push/install without existing approval.
+
+## Native addition (lead 21:08, checker 21:12, 10 October)
+
+`mode: native` takes a nonempty argv array, no shell, and runs in the fresh output directory under the same transient service. Stdin/out/err use DEVNULL; the job writes its own output files. No Docker/chown call. Unit memory256MiB/tasks64/time bounds cover the job and its descendants; external localhost services are excluded, guarded only by host floors. Native samples record unit peak/current tasks and OOM counters. Unknown mode/malformed argv refuse before admission. Same shared admission,5second guard,first-failure stop and ExecStopPost release apply.
+
+Native pass means parent exit0; remaining descendants are terminated at unit stop and END records their count as `orphans_killed`. For abnormal termination before parent completion this count is unknown/null; the acceptance checks both recorded PIDs absent independently. Synthetic native-pass forks a90second child and exits the parent after6seconds. Native-kill kills launcher+service main; both child and parent must be absent by END, reservation released, failed END retained. Pass<60seconds, peak<128MiB/tasks<32; same120second/90second runtime/cleanup bounds. No actual PDF rendering or model calls required or claimed.
+
+Allowed addition≤80 production/60 Python test+acceptance lines; JSON mutation declarations counted separately, consistent with original checker counts. Red-before native tests, full archive suite/mutations and independent result review required. Docker six-case evidence remains bound to18563e5.

@@ -100,5 +100,17 @@
     "file": "n5kit/docker.py",
     "old": "pids=64, role",
     "new": "pids=65, role"
+  },
+  {
+    "name": "native_oom",
+    "file": "n5kit/run.py",
+    "old": "int(events['oom']) == 0 and int(events['oom_kill']) == 0",
+    "new": "True"
+  },
+  {
+    "name": "native_unit",
+    "file": "n5kit/run.py",
+    "old": "group.name == 'n5kit-' + token + '.service'",
+    "new": "True"
   }
 ]
