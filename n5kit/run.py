@@ -78,7 +78,7 @@ def native_sample(job, token):
     require(int(events['oom']) == 0 and int(events['oom_kill']) == 0, 'native_oom')
     descendants = [int(p) for p in (group / 'cgroup.procs').read_text().split() if int(p) != os.getpid()]
     return {'running': status is None, 'exit': status, 'peak': int((group / 'memory.peak').read_text()),
-            'pids': int((group / 'pids.current').read_text()), 'descendants': descendants}
+            'pids': int((group / 'pids.peak').read_text()), 'pids_current': int((group / 'pids.current').read_text()), 'descendants': descendants}
 
 
 def worker(config):
@@ -89,6 +89,7 @@ def worker(config):
     host.probe(spec.get('floors'))
     native = spec.get('mode') == 'native'
     if native:
+        evidence.receipt(out / 'worker-baseline.json', {'worker_pid': os.getpid(), 'worker_tasks': len(list(Path('/proc/self/task').iterdir()))})
         job = subprocess.Popen(spec['argv'], shell=False, cwd=out / 'output', stdin=subprocess.DEVNULL,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:

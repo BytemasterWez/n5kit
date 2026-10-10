@@ -78,6 +78,7 @@ class RunTests(unittest.TestCase):
                 self.assertFalse(spawn.call_args.kwargs['shell'])
                 self.assertEqual(spawn.call_args.kwargs['cwd'], path.parent/'output')
             self.assertEqual(json.loads((path.parent/'job.json').read_text())['orphans_killed'],1)
+            self.assertGreaterEqual(json.loads((path.parent/'worker-baseline.json').read_text())['worker_tasks'],1)
             with patch.object(run.docker, 'cleanup', side_effect=AssertionError('Docker called')), patch.object(run.host, 'release') as release, patch.dict(run.os.environ, {'SERVICE_RESULT':'success'}):
                 run.cleanup(path)
                 release.assert_called_once_with('a'*32)
@@ -94,10 +95,10 @@ class RunTests(unittest.TestCase):
                     run.submit({'mode':'native','argv':['true'],key:value}, '/tmp/unused-n5kit')
 
     def test_native_cgroup_oom_and_exit(self):
-        files={'cgroup':'0::/n5kit-'+('a'*32)+'.service', 'memory.events':'oom 0\noom_kill 0', 'memory.peak':'1024','pids.current':'2','cgroup.procs':str(run.os.getpid())+'\n99'}
+        files={'cgroup':'0::/n5kit-'+('a'*32)+'.service', 'memory.events':'oom 0\noom_kill 0', 'memory.peak':'1024','pids.current':'2','pids.peak':'7','cgroup.procs':str(run.os.getpid())+'\n99'}
         with patch.object(Path, 'read_text', lambda p: files[p.name]):
             result=run.native_sample(Mock(poll=lambda:7), 'a'*32)
-            self.assertEqual((result['running'],result['exit'],result['descendants']), (False,7,[99]))
+            self.assertEqual((result['running'],result['exit'],result['descendants'],result['pids'],result['pids_current']), (False,7,[99],7,2))
             for events in ('oom 1\noom_kill 0', 'oom 0\noom_kill 1'):
                 files['memory.events']=events
                 with self.assertRaisesRegex(RuntimeError,'native_oom'): run.native_sample(Mock(poll=lambda:None),'a'*32)

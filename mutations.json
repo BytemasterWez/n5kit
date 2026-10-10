@@ -142,5 +142,11 @@
     "file": "n5kit/backends.py",
     "old": "if not offline(): return",
     "new": "if True: return"
+  },
+  {
+    "name": "native_peak_tasks",
+    "file": "n5kit/run.py",
+    "old": "int((group / 'pids.peak').read_text())",
+    "new": "int((group / 'pids.current').read_text())"
   }
 ]
