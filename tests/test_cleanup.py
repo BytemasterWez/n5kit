@@ -71,10 +71,10 @@ class CleanupTests(unittest.TestCase):
                     return Mock(returncode=outcome)
                 with patch.object(run.subprocess, 'run', side_effect=execute), patch.object(run.host, 'release', side_effect=lambda _: order.append('release')), patch.dict(run.os.environ, SERVICE_RESULT=service):
                     if outcome == 0:
-                        run.cleanup(config)
+                        run.cleanup(config, hashlib.sha256(config.read_bytes()).hexdigest())
                     else:
                         with self.assertRaises((RuntimeError, subprocess.TimeoutExpired)):
-                            run.cleanup(config)
+                            run.cleanup(config, hashlib.sha256(config.read_bytes()).hexdigest())
                 self.assertEqual(order, ['callback', 'release'] if outcome == 0 else ['callback'])
                 receipt = json.loads((root / 'cleanup-command.json').read_text())
                 self.assertEqual(receipt, {'returncode': outcome if isinstance(outcome, int) else None})
@@ -90,6 +90,6 @@ class CleanupTests(unittest.TestCase):
             (root/'cleanup-result.json').symlink_to(root/'missing')
             with patch.object(run.subprocess, 'run', return_value=Mock(returncode=0)), patch.object(run.host, 'release') as release:
                 with self.assertRaisesRegex(RuntimeError, 'cleanup_evidence_symlink'):
-                    run.cleanup(config)
+                    run.cleanup(config, hashlib.sha256(config.read_bytes()).hexdigest())
                 release.assert_not_called()
             self.assertFalse(json.loads((root/'END.json').read_text())['ok'])

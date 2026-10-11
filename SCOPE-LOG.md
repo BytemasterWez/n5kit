@@ -17,3 +17,11 @@ Explicit scan exemptions (review required; no claim these files were checked by 
 - templates/**: policy templates with negative/example paths, not executable project jobs
 
 Legacy executable findings, if any, are reported at adoption, not auto-exempted or silently repaired by this task. This policy does not claim a current legacy tree passes the new gate.
+
+## M1 correction and capability disposition — 11 October 2026
+
+Checker11:16:56 and lead11:18:06 require protected control receipts and an externally held digest. Config, START and timer receipt files are overmounted read-only after writable mounts in both job sandboxes and in the native cleanup callback. submit hashes the exact config bytes; systemd holds the digest in N5KIT_CONFIG_SHA256 for ExecStopPost, and the launcher fallback passes its local digest. cleanup refuses mismatched/missing digest or config symlink before decoding the config or invoking any callback/resource release. A refusal retains the reservation for an operator. The job's cleared environment cannot replace the manager's digest. The failed candidate16eb24e and its original receipts remain preserved.
+
+Precise accepted Docker exception: DAC_OVERRIDE is retained for the existing root-image contract to write uid1000-owned0700 output; all other capabilities are dropped, no-new-privileges remains enabled, root filesystem and source/input mounts are read-only, and mounts are policy-checked. It bypasses permissions only on already visible mounts, not read-only mount enforcement. Accepted by fable-county11:16:56 and lead11:18:06. No general privileged mode or additional capability is granted.
+
+The URL parser checks HTTP(S) destinations; the bare-host regex is intentionally limited to its enumerated TLDs (not all .uk/.dev/.ai strings). Static literal evidence is not exhaustive network enforcement. No proof or adoption before exact G4 CLEAR.

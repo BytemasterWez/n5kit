@@ -2,7 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from n5kit import boundary
 
 
@@ -108,7 +108,7 @@ class BoundaryTests(unittest.TestCase):
             spec=boundary.bind({}, self.root/'out')
             self.assertEqual(spec['_boundary']['root'],str(self.root))
             with self.assertRaises(RuntimeError): boundary.bind({},self.root.parent/'escape')
-        args=boundary.docker(spec['_boundary'])
+        args=boundary.docker(spec['_boundary'], self.root/'output')
         self.assertIn('--read-only',args)
         self.assertEqual(args.count('--tmpfs'),2)
         with self.assertRaises(RuntimeError): boundary.native({},['true'],self.root/'out')
@@ -118,6 +118,7 @@ class BoundaryTests(unittest.TestCase):
         from unittest.mock import Mock
         out = self.root/'out'
         def execute(args, **kwargs):
+            self.assertIn('--setenv=N5KIT_CONFIG_SHA256='+boundary.hashlib.sha256((out/('a'*32)/'config.json').read_bytes()).hexdigest(), args)
             (out/('a'*32)/'END.json').write_text('{"ok":true}')
             return Mock(returncode=0)
         with patch.object(boundary.Path,'cwd',return_value=self.root), patch.object(run.host,'window'), patch.object(run.host,'probe'), patch.object(run.host,'inventory',return_value={}), patch.object(run.host,'scheduled'), patch.object(run.host,'book'), patch.object(run.subprocess,'run',side_effect=execute):
@@ -130,7 +131,7 @@ class BoundaryTests(unittest.TestCase):
             run.worker(path/'config.json')
             self.assertEqual(spawn.call_args.args[0][0],'bwrap')
             self.assertIn('--unshare-all',spawn.call_args.args[0])
-        with patch.object(run.subprocess,'run',return_value=Mock(returncode=0)) as callback, patch.object(run.host,'release'), patch.dict(run.os.environ,{'SERVICE_RESULT':'success'}):
+        with patch.object(run.subprocess,'run',return_value=Mock(returncode=0)) as callback, patch.object(run.host,'release'), patch.dict(run.os.environ,{'SERVICE_RESULT':'success','N5KIT_CONFIG_SHA256':boundary.hashlib.sha256((path/'config.json').read_bytes()).hexdigest()}):
             run.cleanup(path/'config.json')
             self.assertEqual(callback.call_args.args[0][0],'bwrap')
         self.assertEqual(json.loads((path/'END.json').read_text())['boundary'],start['boundary'])
@@ -144,3 +145,21 @@ class BoundaryTests(unittest.TestCase):
             check.main(self.root,self.root/'receipt.json')
         self.assertEqual(scanned.call_count,1)
         self.assertEqual(scanned.call_args.args[2],{'app.py':'answer=42'})
+
+    def test_cleanup_rejects_tampered_or_unbound_control(self):
+        from n5kit import run
+        import hashlib
+        config=self.root/'config.json'
+        original={'mode':'native','token':'a'*32,'cleanup_argv':['true'],'_boundary':boundary.load(self.root)}
+        config.write_text(json.dumps(original))
+        digest=hashlib.sha256(config.read_bytes()).hexdigest()
+        config.write_text(json.dumps(dict(original,cleanup_argv=['changed'])))
+        for expected in (digest, ''):
+            with patch.dict(run.os.environ, {'N5KIT_CONFIG_SHA256':expected}), patch.object(run.subprocess,'run',return_value=Mock(returncode=0)) as callback, patch.object(run.host,'release') as release:
+                with self.assertRaisesRegex(RuntimeError, 'config_changed'): run.cleanup(config)
+                callback.assert_not_called()
+                release.assert_not_called()
+        record=boundary.load(self.root)
+        for args in (boundary.native({'_boundary':record},['true'],self.root/'output'), boundary.docker(record, self.root/'output')):
+            for name in ('config.json','START.json','timers.json'):
+                self.assertTrue(any(str(self.root/name) in v for v in args))

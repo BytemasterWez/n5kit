@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -51,7 +52,7 @@ class RunTests(unittest.TestCase):
             path=Path(temp)/'config.json'
             path.write_text(json.dumps(dict(token='a'*32,image='image',uid=1000,gid=1000,exception={'authority':'recorded'})))
             with patch.object(run.docker, 'cleanup', return_value=[]) as cleanup, patch.object(run.host, 'release') as release:
-                run.cleanup(path)
+                run.cleanup(path, hashlib.sha256(path.read_bytes()).hexdigest())
                 cleanup.assert_called_once()
                 release.assert_called_once_with('a'*32)
             self.assertEqual({k: v for k, v in json.loads((path.parent/'END.json').read_text()).items() if k in ('ok', 'exception')}, {'ok':False, 'exception':{'authority':'recorded'}})
@@ -61,7 +62,7 @@ class RunTests(unittest.TestCase):
             path=Path(temp)/'config.json'
             path.write_text(json.dumps(dict(token='a'*32,image='image',uid=1000,gid=1000,exception={'authority':'recorded'})))
             with patch.object(run.docker, 'cleanup', side_effect=RuntimeError), patch.object(run.host, 'release') as release:
-                with self.assertRaises(RuntimeError): run.cleanup(path)
+                with self.assertRaises(RuntimeError): run.cleanup(path, hashlib.sha256(path.read_bytes()).hexdigest())
                 release.assert_not_called()
             self.assertEqual({k: v for k, v in json.loads((path.parent/'END.json').read_text()).items() if k in ('cleanup_failed', 'exception')}, {'cleanup_failed':True, 'exception':{'authority':'recorded'}})
 
@@ -89,7 +90,7 @@ class RunTests(unittest.TestCase):
             self.assertEqual(json.loads((path.parent/'job.json').read_text())['orphans_killed'],1)
             self.assertGreaterEqual(json.loads((path.parent/'worker-baseline.json').read_text())['worker_tasks'],1)
             with patch.object(run.docker, 'cleanup', side_effect=AssertionError('Docker called')), patch.object(run.host, 'release') as release, patch.dict(run.os.environ, {'SERVICE_RESULT':'success'}):
-                run.cleanup(path)
+                run.cleanup(path, hashlib.sha256(path.read_bytes()).hexdigest())
                 release.assert_called_once_with('a'*32)
             end=json.loads((path.parent/'END.json').read_text())
             self.assertTrue(end['ok'])

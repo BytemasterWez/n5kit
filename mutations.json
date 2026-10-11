@@ -292,5 +292,29 @@
     "file": "n5kit/run.py",
     "old": "boundary.native(spec, spec['cleanup_argv'], out)",
     "new": "spec['cleanup_argv']"
+  },
+  {
+    "name": "boundary_config_digest",
+    "file": "n5kit/run.py",
+    "old": "require(not config.is_symlink() and hashlib.sha256(raw).hexdigest() == (expected or os.environ.get('N5KIT_CONFIG_SHA256')), 'config_changed')",
+    "new": "require(True, 'config_changed')"
+  },
+  {
+    "name": "boundary_native_control",
+    "file": "n5kit/boundary.py",
+    "old": "args += ['--ro-bind', str(control/name), str(control/name)]",
+    "new": "args += []"
+  },
+  {
+    "name": "boundary_docker_control",
+    "file": "n5kit/boundary.py",
+    "old": "path = str(Path(output).parent/name)",
+    "new": "path = '/not-control'"
+  },
+  {
+    "name": "boundary_external_digest",
+    "file": "n5kit/run.py",
+    "old": "'--setenv=N5KIT_CONFIG_SHA256='+digest",
+    "new": "'--setenv=N5KIT_CONFIG_SHA256=changed'"
   }
 ]

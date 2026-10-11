@@ -35,14 +35,14 @@ def execute(case, image, root):
         code = """import json,os,socket
 from pathlib import Path
 checks=[]
-for path,operation in [(OUTSIDE,'read'),(OUTSIDE,'write'),(READONLY,'write')]:
+for path,operation in [(OUTSIDE,'read'),(OUTSIDE,'write'),(READONLY,'write'),(str(Path.cwd().parent/'config.json'),'write')]:
     try:
         Path(path).read_text() if operation=='read' else Path(path).write_text('changed')
     except (PermissionError,FileNotFoundError,OSError): checks.append(True)
     else: checks.append(False)
 assert os.readlink('/proc/self/ns/net') != HOSTNET
 Path('allowed-marker').write_text('synthetic')
-assert all(checks) and len(checks)==3
+assert all(checks) and len(checks)==4
 Path('denials.json').write_text(json.dumps(checks))
 """
         code = 'OUTSIDE='+repr(str(outside))+';READONLY='+repr(str(readonly))+';HOSTNET='+repr(os.readlink('/proc/self/ns/net'))+'\n'+code

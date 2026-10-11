@@ -54,7 +54,7 @@ def container(token, image, output, argv, memory=512*2**20, pids=64, role='job',
     name = f'n5kit-{token}-{role}'
     cid = call('create', '--pull=never', '--name', name, '--label', f'{LABEL}={token}', '--network', network,
                '--memory', str(memory), '--memory-swap', str(memory), '--pids-limit', str(pids), '--cpus', '1',
-               '--restart', 'no', '--security-opt', 'no-new-privileges:true', *mounts, *(boundary.docker(policy) if policy else []), '--entrypoint', argv[0], image, *argv[1:])
+               '--restart', 'no', '--security-opt', 'no-new-privileges:true', *mounts, *(boundary.docker(policy, output) if policy else []), '--entrypoint', argv[0], image, *argv[1:])
     inspect('container', cid, token)
     call('start', cid)
     return cid

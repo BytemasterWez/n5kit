@@ -98,6 +98,9 @@ def native(spec, argv, output):
     for path in p['write_paths']:
         require(not Path(path).is_symlink() and str(Path(path).resolve()) == path, 'boundary_write_alias')
         if Path(path).exists(): args += ['--bind', path, path]
+    control = Path(output).parent if Path(output).name == 'output' else Path(output)
+    for name in ('config.json', 'START.json', 'timers.json'):
+        args += ['--ro-bind', str(control/name), str(control/name)]
     sockets = {'docker':'/run/docker.sock', 'user-bus':f'/run/user/{os.getuid()}/bus'}
     for name in p['trusted_sockets']:
         path = sockets[name]
@@ -108,10 +111,13 @@ def native(spec, argv, output):
     return args + ['--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', '/nonexistent', '--chdir', str(output), '--', *argv]
 
 
-def docker(record):
+def docker(record, output):
     p = record['policy']
     require(not p['trusted_sockets'], 'boundary_docker_socket_unsupported')
     args = ['--read-only', '--cap-drop=ALL', '--cap-add=DAC_OVERRIDE', '--tmpfs', '/tmp:rw,noexec,nosuid', '--tmpfs', '/run:rw,noexec,nosuid']
     for path in [record['root']] + [v['path'] for v in p['allowed_inputs']]:
+        args += ['--mount', f'type=bind,src={path},dst={path},readonly']
+    for name in ('config.json', 'START.json', 'timers.json'):
+        path = str(Path(output).parent/name)
         args += ['--mount', f'type=bind,src={path},dst={path},readonly']
     return args

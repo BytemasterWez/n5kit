@@ -41,13 +41,14 @@ def submit(spec, root, token=None):
     output.mkdir(mode=0o700)
     config = out / 'config.json'
     evidence.receipt(config, dict(spec, token=token, uid=os.getuid(), gid=os.getgid()))
+    digest = hashlib.sha256(config.read_bytes()).hexdigest()
     evidence.receipt(out / 'timers.json', timers)
     unit = 'n5kit-' + token
     command = [sys.executable, '-m', 'n5kit.run']
     stop = shlex.join(command + ['cleanup', str(config)])
     properties = [f'RuntimeMaxSec={seconds}', f'TimeoutStopSec={cleanup_cap + 90}', f'MemoryMax={memory}', f'TasksMax={tasks}',
                   'KillMode=control-group', 'SendSIGKILL=yes', f'ExecStopPost={stop}', 'UMask=0077']
-    args = ['systemd-run', '--user', '--no-ask-password', '--wait', '--collect', '--quiet', '--setenv=N5KIT_REAL=1', '--setenv=N5KIT_OFFLINE=0', f'--unit={unit}',
+    args = ['systemd-run', '--user', '--no-ask-password', '--wait', '--collect', '--quiet', '--setenv=N5KIT_REAL=1', '--setenv=N5KIT_OFFLINE=0', '--setenv=N5KIT_CONFIG_SHA256='+digest, f'--unit={unit}',
             f'--working-directory={Path(__file__).resolve().parent.parent}']
     args += [f'--property={value}' for value in properties]
     host.window(dt.datetime.now().astimezone(), seconds + cleanup_cap + 90)
@@ -61,7 +62,7 @@ def submit(spec, root, token=None):
     except BaseException:
         subprocess.run(['systemctl', '--user', 'stop', unit], capture_output=True, timeout=cleanup_cap+100)
         if not (out / 'END.json').exists():
-            cleanup(config)
+            cleanup(config, digest)
         raise
     return out
 
@@ -124,8 +125,10 @@ def worker(config):
         time.sleep(max(0, 5 - (time.monotonic() - now)))
 
 
-def cleanup(config):
-    spec = json.loads(config.read_text())
+def cleanup(config, expected=None):
+    raw = config.read_bytes()
+    require(not config.is_symlink() and hashlib.sha256(raw).hexdigest() == (expected or os.environ.get('N5KIT_CONFIG_SHA256')), 'config_changed')
+    spec = json.loads(raw)
     out = config.parent
     detail = None
     try:
