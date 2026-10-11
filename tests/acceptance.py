@@ -29,21 +29,22 @@ def execute(case, image, root):
     case = case.removeprefix('native-')
     if case == 'sandbox':
         from n5kit.run import submit
-        outside = Path('/tmp')/('n5kit-denied-'+token)
+        outside = Path('/var/tmp')/('n5kit-denied-'+token)
         readonly = Path(__file__).resolve().parent/'fixtures/sandbox-readonly.txt'
         outside.write_text('synthetic')
-        code = """import json,os,socket
+        code = """import json,os,sys
 from pathlib import Path
+sys.stderr=open('stderr.txt','w')
 checks=[]
 for path,operation in [(OUTSIDE,'read'),(OUTSIDE,'write'),(READONLY,'write'),(str(Path.cwd().parent/'config.json'),'write')]:
     try:
         Path(path).read_text() if operation=='read' else Path(path).write_text('changed')
-    except (PermissionError,FileNotFoundError,OSError): checks.append(True)
-    else: checks.append(False)
+    except (PermissionError,FileNotFoundError,OSError): checks.append({'operation':operation,'path':path,'denied':True})
+    else: checks.append({'operation':operation,'path':path,'denied':False})
+Path('denials.json').write_text(json.dumps(checks))
 assert os.readlink('/proc/self/ns/net') != HOSTNET
 Path('allowed-marker').write_text('synthetic')
-assert all(checks) and len(checks)==4
-Path('denials.json').write_text(json.dumps(checks))
+assert all(row['denied'] for row in checks) and len(checks)==4
 """
         code = 'OUTSIDE='+repr(str(outside))+';READONLY='+repr(str(readonly))+';HOSTNET='+repr(os.readlink('/proc/self/ns/net'))+'\n'+code
         try:
@@ -53,7 +54,10 @@ Path('denials.json').write_text(json.dumps(checks))
             require(json.loads((out/'END.json').read_text())['orphans_killed'] == 0, 'sandbox_descendant_leak')
             receipt.update(token=out.name, denials=json.loads((out/'output/denials.json').read_text()), unit_end=json.loads((out/'END.json').read_text()))
         finally:
+            unchanged = outside.read_bytes() == b'synthetic'
+            evidence.receipt(root/'host-fixture.json', {'path':str(outside),'unchanged':unchanged})
             outside.unlink()
+            require(unchanged, 'sandbox_changed_host_fixture')
     elif case == 'snapshot':
         require(not 5 <= dt.datetime.now().astimezone().minute < 52, 'not_actual_snapshot_window')
         spec = root / 'spec.json'
