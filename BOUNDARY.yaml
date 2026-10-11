@@ -1,0 +1,52 @@
+{
+  "project": "n5kit",
+  "canon": [
+    {
+      "file": "SPEC.md",
+      "lines": "1-9"
+    }
+  ],
+  "write_paths": [
+    "/home/wez/Work/n5kit/evidence"
+  ],
+  "forbidden_paths": [
+    "/home/wez/Projects/openclawcountydb",
+    "/home/wez/Projects/sheetnorm-money",
+    "/home/wez/Work/calder-rowe-briefs",
+    "/home/wez/Work/county-data-snapshot",
+    "/home/wez/Work/cyphermesh-n5-20261001",
+    "/home/wez/Work/fedspend-lake",
+    "/mnt/personal",
+    "/mnt/work/nextcloud-data"
+  ],
+  "allowed_inputs": [
+    {
+      "path": "/home/wez/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu",
+      "contract": "installed Python3.11 runtime, read-only"
+    }
+  ],
+  "databases": {
+    "allowed": [],
+    "forbidden_patterns": [
+      "county_core",
+      "postgresql://.*county"
+    ]
+  },
+  "network_hosts": {
+    "allowed": []
+  },
+  "forbidden_imports": [
+    "ncfi"
+  ],
+  "never_store_fields": [],
+  "trusted_sockets": [],
+  "scope_log": "SCOPE-LOG.md",
+  "scan_exclusions": {
+    "*.md": "canon, operational history and policy explanations; not executable input",
+    "tests/**": "synthetic negative fixtures; independent unit checks still run",
+    "mutations.json": "explicit negative source mutations",
+    ".github/**": "CI metadata, not job networking",
+    "n5kit/boundary.py": "scanner implementation necessarily contains host/connection matching patterns; separately unit/mutation checked",
+    "templates/**": "policy templates with negative/example paths, not executable project jobs"
+  }
+}

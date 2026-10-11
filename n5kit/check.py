@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from . import evidence, require
+from . import boundary, evidence, require
 
 
 def scan(tree):
@@ -35,6 +35,10 @@ def main(repo, receipt_path):
         tree, record = evidence.archive(repo, Path(directory))
         subprocess.run([os.environ.get('RUFF', 'ruff'), 'check', str(tree)], check=True)
         scan(tree)
+        policy = boundary.load(repo)
+        changed = subprocess.check_output(['git', 'diff-tree', '--root', '--no-commit-id', '--name-only', '-r', 'HEAD'], cwd=repo).decode().splitlines()
+        diff = {name: (tree/name).read_text(errors='replace') for name in changed if (tree/name).is_file()}
+        boundary.scan(tree, policy, diff)
         baseline = tests(tree)
         require(baseline.returncode == 0 and re.search(rb'Ran [1-9][0-9]* tests?', baseline.stderr), 'archive_tests_failed')
         killed = []
@@ -48,7 +52,7 @@ def main(repo, receipt_path):
                 killed.append(rule['name'])
             finally:
                 path.write_text(original)
-        evidence.receipt(receipt_path, dict(record, ok=True, killed=killed, tests=baseline.stderr.decode()))
+        evidence.receipt(receipt_path, dict(record, boundary=policy, ok=True, killed=killed, tests=baseline.stderr.decode()))
         print(json.dumps(dict(record, ok=True, mutations=len(killed))))
 
 

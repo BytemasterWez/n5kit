@@ -202,5 +202,95 @@
     "file": "n5kit/host.py",
     "old": "minimum = FLOORS | {'memory': 8}",
     "new": "minimum = FLOORS | {'memory': 7}"
+  },
+  {
+    "name": "boundary_duplicate",
+    "file": "n5kit/boundary.py",
+    "old": "len(dict(pairs)) == len(pairs)",
+    "new": "True"
+  },
+  {
+    "name": "boundary_field",
+    "file": "n5kit/boundary.py",
+    "old": "not any(v.lower() in text.lower() for v in p['never_store_fields'])",
+    "new": "True"
+  },
+  {
+    "name": "boundary_path",
+    "file": "n5kit/boundary.py",
+    "old": "not any(v in text for v in p['forbidden_paths'])",
+    "new": "True"
+  },
+  {
+    "name": "boundary_database",
+    "file": "n5kit/boundary.py",
+    "old": "not any(re.search(v, text) for v in p['databases']['forbidden_patterns'])",
+    "new": "True"
+  },
+  {
+    "name": "boundary_database_allowlist",
+    "file": "n5kit/boundary.py",
+    "old": "all(any(re.fullmatch(v, c) for v in p['databases']['allowed']) for c in connections)",
+    "new": "True"
+  },
+  {
+    "name": "boundary_host",
+    "file": "n5kit/boundary.py",
+    "old": "set(hosts) <= set(p['network_hosts']['allowed'])",
+    "new": "True"
+  },
+  {
+    "name": "boundary_import",
+    "file": "n5kit/boundary.py",
+    "old": "not any(n == v or n.startswith(v+'.') for n in names for v in p['forbidden_imports'])",
+    "new": "True"
+  },
+  {
+    "name": "boundary_output",
+    "file": "n5kit/boundary.py",
+    "old": "any(Path(output).resolve().is_relative_to(v) for v in record['policy']['write_paths'])",
+    "new": "True"
+  },
+  {
+    "name": "boundary_network",
+    "file": "n5kit/boundary.py",
+    "old": "if p['network_hosts']['allowed']: args += ['--share-net']",
+    "new": "if True: args += ['--share-net']"
+  },
+  {
+    "name": "boundary_readonly",
+    "file": "n5kit/boundary.py",
+    "old": "args = ['--read-only', '--cap-drop=ALL'",
+    "new": "args = ['--cap-drop=ALL'"
+  },
+  {
+    "name": "boundary_input_alias",
+    "file": "n5kit/boundary.py",
+    "old": "all(str(Path(v['path']).resolve()) == v['path'] and Path(v['path']).exists() for v in p['allowed_inputs'])",
+    "new": "True"
+  },
+  {
+    "name": "boundary_gate",
+    "file": "n5kit/check.py",
+    "old": "boundary.scan(tree, policy, diff)",
+    "new": "pass"
+  },
+  {
+    "name": "boundary_bind",
+    "file": "n5kit/run.py",
+    "old": "spec = boundary.bind(spec, root)",
+    "new": "spec = dict(spec)"
+  },
+  {
+    "name": "boundary_job",
+    "file": "n5kit/run.py",
+    "old": "boundary.native(spec, spec['argv'], out / 'output')",
+    "new": "spec['argv']"
+  },
+  {
+    "name": "boundary_callback",
+    "file": "n5kit/run.py",
+    "old": "boundary.native(spec, spec['cleanup_argv'], out)",
+    "new": "spec['cleanup_argv']"
   }
 ]

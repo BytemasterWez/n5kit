@@ -1,0 +1,38 @@
+{
+  "project": "REPLACE_WITH_PROJECT",
+  "canon": [
+    {
+      "file": "SPEC.md",
+      "lines": "1-1"
+    }
+  ],
+  "write_paths": [
+    "/home/wez/Work/REPLACE_WITH_PROJECT"
+  ],
+  "forbidden_paths": [
+    "/home/wez/Projects/openclawcountydb"
+  ],
+  "allowed_inputs": [],
+  "databases": {
+    "allowed": [],
+    "forbidden_patterns": [
+      "county_core",
+      "postgresql://.*county"
+    ]
+  },
+  "network_hosts": {
+    "allowed": []
+  },
+  "forbidden_imports": [
+    "ncfi"
+  ],
+  "never_store_fields": [],
+  "trusted_sockets": [],
+  "scope_log": "SCOPE-LOG.md",
+  "scan_exclusions": {
+    "*.md": "canon/documentation",
+    "tests/**": "synthetic negative fixtures",
+    "mutations.json": "negative test declarations",
+    ".github/**": "CI metadata"
+  }
+}

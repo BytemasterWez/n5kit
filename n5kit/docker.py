@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 from .backends import commands as subprocess
-from . import require, token_ok
+from . import boundary, require, token_ok
 
 LABEL = 'n5kit.token'
 
@@ -32,16 +32,16 @@ def owned(kind, token):
     return names
 
 
-def create(kind, token):
+def create(kind, token, public=False):
     token_ok(token)
     name = f'n5kit-{token}-{kind}'
-    flags = ['--internal'] if kind == 'network' else []
+    flags = ['--internal'] if kind == 'network' and not public else []
     call(kind, 'create', *flags, '--label', f'{LABEL}={token}', name)
     inspect(kind, name, token)
     return name
 
 
-def container(token, image, output, argv, memory=512*2**20, pids=64, role='job', network='none', volume=None):
+def container(token, image, output, argv, memory=512*2**20, pids=64, role='job', network='none', volume=None, policy=None):
     token_ok(token)
     require(re.fullmatch(r'sha256:[0-9a-f]{64}', image) is not None, 'immutable_image_required')
     require(memory > 0 and pids > 0 and role in ('job', 'ownership'), 'container_limits')
@@ -54,7 +54,7 @@ def container(token, image, output, argv, memory=512*2**20, pids=64, role='job',
     name = f'n5kit-{token}-{role}'
     cid = call('create', '--pull=never', '--name', name, '--label', f'{LABEL}={token}', '--network', network,
                '--memory', str(memory), '--memory-swap', str(memory), '--pids-limit', str(pids), '--cpus', '1',
-               '--restart', 'no', '--security-opt', 'no-new-privileges:true', *mounts, '--entrypoint', argv[0], image, *argv[1:])
+               '--restart', 'no', '--security-opt', 'no-new-privileges:true', *mounts, *(boundary.docker(policy) if policy else []), '--entrypoint', argv[0], image, *argv[1:])
     inspect('container', cid, token)
     call('start', cid)
     return cid

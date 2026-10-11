@@ -10,7 +10,7 @@ from .backends import commands as subprocess
 import sys
 import time
 import uuid
-from . import docker, evidence, host, require, token_ok
+from . import boundary, docker, evidence, host, require, token_ok
 
 
 def submit(spec, root, token=None):
@@ -27,6 +27,7 @@ def submit(spec, root, token=None):
     seconds = spec.get('seconds', 60)
     memory, tasks, seconds = native_limits(spec) if mode == 'native' else ('256M', 64, seconds)
     require(mode == 'native' or 0 < seconds <= 1800, 'runtime_limit')
+    spec = boundary.bind(spec, root)
     host.window(dt.datetime.now().astimezone(), seconds + cleanup_cap + 90)
     host.probe(spec.get('floors'), spec.get('exception'))
     timers = host.inventory()
@@ -73,7 +74,7 @@ def native_limits(spec):
 
 def scope(spec):
     caps = dict(zip(('memory_bytes', 'tasks', 'seconds'), native_limits(spec))) if spec.get('mode') == 'native' else {}
-    return {'exception': spec.get('exception'), 'caps': caps, 'mode': spec.get('mode', 'docker'), 'limits_scope': 'unit job and descendants; external services excluded' if spec.get('mode') == 'native' else 'Docker flags bound container; unit bounds worker'}
+    return {'boundary': spec.get('_boundary'), 'exception': spec.get('exception'), 'caps': caps, 'mode': spec.get('mode', 'docker'), 'limits_scope': 'unit job and descendants; external services excluded' if spec.get('mode') == 'native' else 'Docker flags bound container; unit bounds worker'}
 
 
 def native_sample(job, token):
@@ -97,13 +98,13 @@ def worker(config):
     native = spec.get('mode') == 'native'
     if native:
         evidence.receipt(out / 'worker-baseline.json', {'worker_pid': os.getpid(), 'worker_tasks': len(list(Path('/proc/self/task').iterdir()))})
-        job = subprocess.Popen(spec['argv'], shell=False, cwd=out / 'output', stdin=subprocess.DEVNULL,
+        job = subprocess.Popen(boundary.native(spec, spec['argv'], out / 'output'), shell=False, cwd=out / 'output', stdin=subprocess.DEVNULL,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
-        network = docker.create('network', token)
+        network = docker.create('network', token, bool(spec['_boundary']['policy']['network_hosts']['allowed']))
         volume = docker.create('volume', token)
         job = docker.container(token, spec['image'], out / 'output', spec['argv'], spec.get('memory', 512*2**20),
-                               spec.get('pids', 64), network=network, volume=volume)
+                               spec.get('pids', 64), network=network, volume=volume, policy=spec['_boundary'])
     start = previous = time.monotonic()
     while True:
         floors = dict(spec.get('floors', host.FLOORS))
@@ -132,7 +133,7 @@ def cleanup(config):
         if 'cleanup_argv' in spec:
             status = None
             try:
-                status = subprocess.run(spec['cleanup_argv'], shell=False, cwd=out, timeout=spec.get('cleanup_timeout', 60),
+                status = subprocess.run(boundary.native(spec, spec['cleanup_argv'], out), shell=False, cwd=out, timeout=spec.get('cleanup_timeout', 60),
                                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
             finally:
                 evidence.receipt(out / 'cleanup-command.json', {'returncode': status})

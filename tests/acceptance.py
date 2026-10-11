@@ -27,7 +27,34 @@ def execute(case, image, root):
     receipt = {'case': case, 'at': dt.datetime.now().astimezone().isoformat(), 'token': token}
     native = case.startswith('native-')
     case = case.removeprefix('native-')
-    if case == 'snapshot':
+    if case == 'sandbox':
+        from n5kit.run import submit
+        outside = Path('/tmp')/('n5kit-denied-'+token)
+        readonly = Path(__file__).resolve().parent/'fixtures/sandbox-readonly.txt'
+        outside.write_text('synthetic')
+        code = """import json,os,socket
+from pathlib import Path
+checks=[]
+for path,operation in [(OUTSIDE,'read'),(OUTSIDE,'write'),(READONLY,'write')]:
+    try:
+        Path(path).read_text() if operation=='read' else Path(path).write_text('changed')
+    except (PermissionError,FileNotFoundError,OSError): checks.append(True)
+    else: checks.append(False)
+assert os.readlink('/proc/self/ns/net') != HOSTNET
+Path('allowed-marker').write_text('synthetic')
+assert all(checks) and len(checks)==3
+Path('denials.json').write_text(json.dumps(checks))
+"""
+        code = 'OUTSIDE='+repr(str(outside))+';READONLY='+repr(str(readonly))+';HOSTNET='+repr(os.readlink('/proc/self/ns/net'))+'\n'+code
+        try:
+            out = submit({'mode':'native','argv':['/usr/bin/python3','-c',code],'seconds':15},root/'runs')
+            require(outside.read_text() == readonly.read_text().strip() == 'synthetic', 'sandbox_changed_fixture')
+            require(out.name not in host.RESERVATIONS.read_text(), 'reservation_leak')
+            require(json.loads((out/'END.json').read_text())['orphans_killed'] == 0, 'sandbox_descendant_leak')
+            receipt.update(token=out.name, denials=json.loads((out/'output/denials.json').read_text()), unit_end=json.loads((out/'END.json').read_text()))
+        finally:
+            outside.unlink()
+    elif case == 'snapshot':
         require(not 5 <= dt.datetime.now().astimezone().minute < 52, 'not_actual_snapshot_window')
         spec = root / 'spec.json'
         evidence.receipt(spec, {'image': image, 'argv': ['true']})
@@ -107,7 +134,7 @@ def execute(case, image, root):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--case', choices=['pass', 'term', 'kill', 'snapshot', 'booked', 'memory', 'native-pass', 'native-kill'], required=True)
+    parser.add_argument('--case', choices=['sandbox', 'pass', 'term', 'kill', 'snapshot', 'booked', 'memory', 'native-pass', 'native-kill'], required=True)
     parser.add_argument('--image', required=True)
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()

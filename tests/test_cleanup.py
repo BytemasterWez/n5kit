@@ -9,6 +9,12 @@ from n5kit import run
 
 
 class CleanupTests(unittest.TestCase):
+    def setUp(self):
+        for name, effect in [('bind', lambda spec, out: spec), ('native', lambda spec, argv, out: argv)]:
+            mock = patch.object(run.boundary, name, side_effect=effect)
+            mock.start()
+            self.addCleanup(mock.stop)
+
     def test_invalid_callback_before_admission(self):
         for argv in (None, "true", [], [1], [""], ["bad\0arg"]):
             with self.subTest(argv=argv), patch.object(run.host, 'window', side_effect=AssertionError('admission reached')):

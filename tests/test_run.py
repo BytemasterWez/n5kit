@@ -6,6 +6,12 @@ from unittest.mock import patch, Mock
 from n5kit import run
 
 class RunTests(unittest.TestCase):
+    def setUp(self):
+        for name, effect in [('bind', lambda spec, out: spec), ('native', lambda spec, argv, out: argv)]:
+            mock = patch.object(run.boundary, name, side_effect=effect)
+            mock.start()
+            self.addCleanup(mock.stop)
+
     def test_transient_service_owns_cleanup(self):
         with tempfile.TemporaryDirectory() as temp:
             token = 'a'*32
@@ -30,7 +36,7 @@ class RunTests(unittest.TestCase):
         for gap, status in [(31,0),(5,1)]:
             with tempfile.TemporaryDirectory() as temp:
                 path=Path(temp)/'config.json'
-                path.write_text(json.dumps(dict(token='a'*32,image='image',argv=['true'],exception={'authority':'recorded'})))
+                path.write_text(json.dumps(dict(_boundary={'policy':{'network_hosts':{'allowed':[]}}},token='a'*32,image='image',argv=['true'],exception={'authority':'recorded'})))
                 with patch.object(run.host, 'window'), patch.object(run.host, 'inventory'), patch.object(run.host, 'scheduled'), patch.object(run.host, 'probe', return_value={}) as probe, patch.object(run.docker, 'create'), patch.object(run.docker, 'container'), patch.object(run.docker, 'sample', return_value={'running':False,'exit':status}), patch.object(run.time, 'monotonic', side_effect=[0,gap]):
                     with self.assertRaises(RuntimeError): run.worker(path)
                     self.assertEqual([c.args for c in probe.call_args_list], [(None, {'authority':'recorded'}), (run.host.FLOORS, {'authority':'recorded'})])
@@ -62,7 +68,7 @@ class RunTests(unittest.TestCase):
     def test_injected_memory_uses_real_guard_path(self):
         with tempfile.TemporaryDirectory() as temp:
             path=Path(temp)/'config.json'
-            path.write_text(json.dumps(dict(token='a'*32,image='image',argv=['true'],rehearsal_memory_after=0)))
+            path.write_text(json.dumps(dict(_boundary={'policy':{'network_hosts':{'allowed':[]}}},token='a'*32,image='image',argv=['true'],rehearsal_memory_after=0)))
             with patch.object(run.host, 'window'), patch.object(run.host, 'inventory'), patch.object(run.host, 'scheduled'), patch.object(run.host, 'metrics', return_value={'memory':30,'docker':300,'work':150,'load':0}), patch.object(run.docker, 'create', return_value='owned'), patch.object(run.docker, 'container', return_value='owned'), patch.object(run.docker, 'sample') as sample:
                 with self.assertRaisesRegex(RuntimeError, 'host_guard_failed'): run.worker(path)
                 sample.assert_not_called()
