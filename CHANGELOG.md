@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased — 3 November 2026
+Opt-in `n5kit-check.json` `mutation_runner` (card #0434): a project may replace the per-mutant loop with its own strict runner; absent file = unchanged behaviour. See README.
+
 ## 0.1.0 candidate — 10 October 2026
 Shared host reservation/floor guards, transient run lifecycle, owned Docker cleanup, evidence checks and standard project targets. Awaiting real-host acceptance and independent review.
 
