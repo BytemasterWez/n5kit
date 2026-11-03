@@ -316,5 +316,107 @@
     "file": "n5kit/run.py",
     "old": "'--setenv=N5KIT_CONFIG_SHA256='+digest",
     "new": "'--setenv=N5KIT_CONFIG_SHA256=changed'"
+  },
+  {
+    "name": "runner_keys",
+    "file": "n5kit/check.py",
+    "old": "set(config) == {'mutation_runner', 'timeout_s', 'reason'}",
+    "new": "set(config) <= {'mutation_runner', 'timeout_s', 'reason'}"
+  },
+  {
+    "name": "runner_optin",
+    "file": "n5kit/check.py",
+    "old": "if not path.exists(): return None",
+    "new": "if True: return None"
+  },
+  {
+    "name": "runner_argv_nonempty",
+    "file": "n5kit/check.py",
+    "old": "isinstance(argv, list) and argv and",
+    "new": "isinstance(argv, list) and"
+  },
+  {
+    "name": "runner_arg_nonempty",
+    "file": "n5kit/check.py",
+    "old": "isinstance(a, str) and a for",
+    "new": "isinstance(a, str) for"
+  },
+  {
+    "name": "runner_timeout_int",
+    "file": "n5kit/check.py",
+    "old": "isinstance(timeout, int) and",
+    "new": "True and"
+  },
+  {
+    "name": "runner_timeout_min",
+    "file": "n5kit/check.py",
+    "old": "60 <= timeout",
+    "new": "59 <= timeout"
+  },
+  {
+    "name": "runner_timeout_max",
+    "file": "n5kit/check.py",
+    "old": "timeout <= 7200",
+    "new": "timeout <= 7201"
+  },
+  {
+    "name": "runner_reason",
+    "file": "n5kit/check.py",
+    "old": "config['reason'].strip()",
+    "new": "config['reason']"
+  },
+  {
+    "name": "runner_replaces_loop",
+    "file": "n5kit/check.py",
+    "old": "if config:\n            rules",
+    "new": "if False:\n            rules"
+  },
+  {
+    "name": "runner_unique",
+    "file": "n5kit/check.py",
+    "old": "require((tree / rule['file']).read_text().count(rule['old']) == 1, 'mutation_not_unique')",
+    "new": "require(True, 'mutation_not_unique')"
+  },
+  {
+    "name": "runner_rc",
+    "file": "n5kit/check.py",
+    "old": "require(process.returncode == 0,",
+    "new": "require(True,"
+  },
+  {
+    "name": "runner_timeout_kill",
+    "file": "n5kit/check.py",
+    "old": "os.killpg(process.pid, signal.SIGKILL)",
+    "new": "pass"
+  },
+  {
+    "name": "runner_session",
+    "file": "n5kit/check.py",
+    "old": "start_new_session=True",
+    "new": "start_new_session=False"
+  },
+  {
+    "name": "runner_tail",
+    "file": "n5kit/check.py",
+    "old": "output[-4096:]",
+    "new": "output[-4095:]"
+  },
+  {
+    "name": "runner_receipt_marker",
+    "file": "n5kit/check.py",
+    "old": "dict(mutations='external', mutation_runner=",
+    "new": "dict(mutations='none', mutation_runner="
+  },
+  {
+    "name": "runner_print_marker",
+    "file": "n5kit/check.py",
+    "old": "mutations='external' if config",
+    "new": "mutations='none' if config"
+  },
+  {
+    "name": "runner_env",
+    "file": "n5kit/check.py",
+    "old": "cwd=tree, env=environment(tree), stdout",
+    "new": "cwd=tree, stdout"
   }
 ]
